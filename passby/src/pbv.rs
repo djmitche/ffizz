@@ -37,7 +37,7 @@ pub trait PassByValue: Sized {
     /// #[no_mangle]
     /// pub unsafe extern "C" fn uuid_version(uuid: foo_uuid_t) -> usize {
     ///     // SAFETY:
-    ///     // - uuid is a valid foo_uuid_t (promised by caller)
+    ///     // - uuid is a valid foo_uuid_t (see docstring)
     ///     // - uuid is Copy so ownership doesn't matter
     ///     let uuid = unsafe { foo_uuid_t::val_from_arg(uuid) };
     ///     return uuid.get_version_num()
@@ -45,7 +45,7 @@ pub trait PassByValue: Sized {
     /// ```
     unsafe fn val_from_arg(arg: Self) -> Self::RustType {
         // SAFETY:
-        //  - arg is a valid CType (promised by caller)
+        //  - arg is a valid CType (see docstring)
         unsafe { arg.from_ctype() }
     }
 
@@ -85,8 +85,8 @@ pub trait PassByValue: Sized {
     /// #[no_mangle]
     /// pub unsafe extern "C" fn foo_file_close(file: *mut foo_file_t) {
     ///     // SAFETY:
-    ///     // - file is not NULL (promised by caller)
-    ///     // - *file is a valid foo_file_t (promised by caller)
+    ///     // - file is not NULL (see docstring)
+    ///     // - *file is a valid foo_file_t (see docstring)
     ///     let file = unsafe {
     ///         foo_file_t::take_val_from_arg(file, foo_file_t { fd: -1 })
     ///     };
@@ -94,11 +94,11 @@ pub trait PassByValue: Sized {
     /// }
     unsafe fn take_val_from_arg(arg: *mut Self, mut replacement: Self) -> Self::RustType {
         // SAFETY:
-        //  - arg is valid (promised by caller)
+        //  - arg is valid (see docstring)
         //  - replacement is valid and aligned (guaranteed by Rust)
         unsafe { std::ptr::swap(arg, &mut replacement) };
         // SAFETY:
-        //  - replacement (formerly *arg) is a valid CType (promised by caller)
+        //  - replacement (formerly *arg) is a valid CType (see docstring)
         unsafe { PassByValue::val_from_arg(replacement) }
     }
 
@@ -159,7 +159,7 @@ pub trait PassByValue: Sized {
     ///     u1: *mut foo_uuid_t, u2: *mut foo_uuid_t) {
     ///    // SAFETY:
     ///    // - u1, u2 are not NULL, properly aligned, and point to valid memory
-    ///    //   (promised by caller)
+    ///    //   (see docstring)
     ///    unsafe {
     ///        // MVP: just use random uuids until quantum entanglement is possible
     ///        foo_uuid_t::val_to_arg_out(Uuid::new_v4(), u1);
@@ -170,8 +170,8 @@ pub trait PassByValue: Sized {
     unsafe fn val_to_arg_out(val: Self::RustType, arg_out: *mut Self) {
         debug_assert!(!arg_out.is_null());
         // SAFETY:
-        //  - arg_out is not NULL (promised by caller, asserted)
-        //  - arg_out is properly aligned and points to valid memory (promised by caller)
+        //  - arg_out is not NULL (see docstring)
+        //  - arg_out is properly aligned and points to valid memory (see docstring)
         unsafe { *arg_out = Self::as_ctype(val) };
     }
 }

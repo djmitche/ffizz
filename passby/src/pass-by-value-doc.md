@@ -18,8 +18,8 @@ In most cases, this trait is used for simple types like enums with values.
 # use uuid::Uuid;
 # use ffizz_passby::PassByValue;
 
+# #[allow(non_camel_case_types)]
 #[repr(C)]
-#[allow(non_camel_case_types)]
 pub struct foo_status_t {
     status: u8,
     errno: u32,

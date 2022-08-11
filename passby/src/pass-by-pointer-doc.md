@@ -1,15 +1,21 @@
 This trait supports values passed to Rust by pointer.
 These values are represented as in C, and always handled as pointers.
 
-C and Rust use different allocators, so it must be unambiguous what memory was allocated by which allocator.
-Depending on the use-case, all allocations may occur in one allocator or the other, in which case this distinction is simple.
-In more complex use-cases, it may be necessary to include a flag to indicate which allocator "owns" the memory.
+Typically PassByPointer is used to model objects managed entirely by Rust.
+These are represented in the C API by a pointer to an opaque struct, with "new" and "free" functions handling creation and destruction.
 
 # Example
+
+The PassByPointer trait does not require any methods.
+See the individual provided methods for examples of their use.
 
 ```rust
 use ffizz_passby::PassByPointer;
 
-// TODO...
+# struc DBEngine { }
 
+# #[allow(non_camel_case_types)]
+pub struct foo_db_t (DBEngine);
+
+impl PassByPointer for foo_db_t {}
 ```
