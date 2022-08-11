@@ -11,11 +11,8 @@ See the individual provided methods for examples of their use.
 
 ```rust
 use ffizz_passby::PassByPointer;
-
-# struc DBEngine { }
-
+# struct DBEngine { }
 # #[allow(non_camel_case_types)]
 pub struct foo_db_t (DBEngine);
-
 impl PassByPointer for foo_db_t {}
 ```

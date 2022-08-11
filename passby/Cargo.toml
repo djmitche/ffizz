@@ -2,8 +2,10 @@
 name = "ffizz-passby"
 description = "FFI helpers for implementing pass-by-value and pass-by-pointer"
 repository = "https://github.com/djmitche/ffizz"
+readme = "src/crate-doc.md"
+documentation = "https://docs.rs/ffizz-passby"
 license = "MIT"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]
