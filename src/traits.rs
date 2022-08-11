@@ -1,6 +1,3 @@
-use crate::util::vec_into_raw_parts;
-use std::ptr::NonNull;
-
 #[doc = include_str!("pass-by-value-doc.md")]
 pub trait PassByValue: Sized {
     /// The Rust representation of this type.
@@ -10,7 +7,7 @@ pub trait PassByValue: Sized {
     ///
     /// # Safety
     ///
-    /// `self` must be a valid CType.
+    /// The implementation of this method assumes that `self` is a valid instance of Self.
     #[allow(clippy::wrong_self_convention)]
     unsafe fn from_ctype(self) -> Self::RustType;
 
@@ -23,6 +20,28 @@ pub trait PassByValue: Sized {
     ///
     /// - `self` must be a valid instance of the C type.  This is typically ensured either by
     ///   requiring that C code not modify it, or by defining the valid values in C comments.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use uuid::Uuid;
+    /// # use ffi_passby::PassByValue;
+    /// # pub struct foo_uuid_t([u8; 16]);
+    /// # impl PassByValue for foo_uuid_t {
+    /// #     type RustType = Uuid;
+    /// #     unsafe fn from_ctype(self) -> Self::RustType { todo!() }
+    /// #     fn as_ctype(arg: Uuid) -> Self { todo!() }
+    /// # }
+    /// /// Determine the version for the given UUID.  The given UUID must be valid.
+    /// #[no_mangle]
+    /// pub unsafe extern "C" fn uuid_version(uuid: foo_uuid_t) -> usize {
+    ///     // SAFETY:
+    ///     // - uuid is a valid foo_uuid_t (promised by caller)
+    ///     // - uuid is Copy so ownership doesn't matter
+    ///     let uuid = unsafe { foo_uuid_t::val_from_arg(uuid) };
+    ///     return uuid.get_version_num()
+    /// }
+    /// ```
     unsafe fn val_from_arg(arg: Self) -> Self::RustType {
         // SAFETY:
         //  - arg is a valid CType (promised by caller)
@@ -32,10 +51,46 @@ pub trait PassByValue: Sized {
     /// Take a value from C as a pointer argument, replacing it with the given value.  This is used
     /// to invalidate the C value as an additional assurance against subsequent use of the value.
     ///
+    /// Most uses of this trait do not require invalidation to ensure correctness, so it is unusual
+    /// to use this method.
+    ///
     /// # Safety
     ///
     /// - arg must not be NULL
     /// - *arg must be a valid, properly aligned instance of the C type
+    ///
+    /// # Example
+    ///
+    /// Consider a `foo_file_t` that wraps a file descriptor.  The C API can avoid use of this
+    /// descriptor after close by invalidating the file descriptor when closing.
+    ///
+    /// Note that the Rust type used here must _not_ automatically close the file on drop!
+    ///
+    /// ```rust
+    /// # use ffi_passby::PassByValue;
+    /// #[repr(C)]
+    /// struct foo_file_t { fd: i64 }
+    /// # struct File(i64);
+    /// # impl File {
+    /// #     fn close(self) { todo!() }
+    /// # }
+    /// # impl PassByValue for foo_file_t {
+    /// #     type RustType = File;
+    /// #     unsafe fn from_ctype(self) -> Self::RustType { todo!() }
+    /// #     fn as_ctype(arg: Self::RustType) -> Self { todo!() }
+    /// # }
+    /// /// Close a foo_file_t. The given file must not be NULL and must point to a valid, open
+    /// /// foo_file_t. The file cannot be used after this call.
+    /// #[no_mangle]
+    /// pub unsafe extern "C" fn foo_file_close(file: *mut foo_file_t) {
+    ///     // SAFETY:
+    ///     // - file is not NULL (promised by caller)
+    ///     // - *file is a valid foo_file_t (promised by caller)
+    ///     let file = unsafe {
+    ///         foo_file_t::take_val_from_arg(file, foo_file_t { fd: -1 })
+    ///     };
+    ///     file.close();
+    /// }
     unsafe fn take_val_from_arg(arg: *mut Self, mut replacement: Self) -> Self::RustType {
         // SAFETY:
         //  - arg is valid (promised by caller)
@@ -51,6 +106,26 @@ pub trait PassByValue: Sized {
     /// # Safety
     ///
     /// - if the value is allocated, the caller must ensure that the value is eventually freed
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use uuid::Uuid;
+    /// # use ffi_passby::PassByValue;
+    /// # pub struct foo_uuid_t([u8; 16]);
+    /// # impl PassByValue for foo_uuid_t {
+    /// #     type RustType = Uuid;
+    /// #     unsafe fn from_ctype(self) -> Self::RustType { todo!() }
+    /// #     fn as_ctype(arg: Uuid) -> Self { todo!() }
+    /// # }
+    /// /// Create a new, randomly-generated UUID.
+    /// #[no_mangle]
+    /// pub unsafe extern "C" fn make_uuid() -> foo_uuid_t {
+    ///    // SAFETY:
+    ///    // - value is not allocated; no concerns
+    ///    unsafe { foo_uuid_t::return_val(Uuid::new_v4()) }
+    /// }
+    /// ```
     unsafe fn return_val(arg: Self::RustType) -> Self {
         Self::as_ctype(arg)
     }
@@ -61,6 +136,34 @@ pub trait PassByValue: Sized {
     ///
     /// - `arg_out` must not be NULL and must be properly aligned and pointing to valid memory
     ///   of the size of CType.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use uuid::Uuid;
+    /// # use ffi_passby::PassByValue;
+    /// # pub struct foo_uuid_t([u8; 16]);
+    /// # impl PassByValue for foo_uuid_t {
+    /// #     type RustType = Uuid;
+    /// #     unsafe fn from_ctype(self) -> Self::RustType { todo!() }
+    /// #     fn as_ctype(arg: Uuid) -> Self { todo!() }
+    /// # }
+    /// /// Create a pair of UUIDs entangled at the quantum level.  Both pointers
+    /// /// must be properly aligned and pointing to valid memory to contain a
+    /// /// foo_uuid_t.
+    /// #[no_mangle]
+    /// pub unsafe extern "C" fn foo_uuid_entangled_pair(
+    ///     u1: *mut foo_uuid_t, u2: *mut foo_uuid_t) {
+    ///    // SAFETY:
+    ///    // - u1, u2 are not NULL, properly aligned, and point to valid memory
+    ///    //   (promised by caller)
+    ///    unsafe {
+    ///        // MVP: just use random uuids until quantum entanglement is possible
+    ///        foo_uuid_t::val_to_arg_out(Uuid::new_v4(), u1);
+    ///        foo_uuid_t::val_to_arg_out(Uuid::new_v4(), u2);
+    ///    }
+    /// }
+    /// ```
     unsafe fn val_to_arg_out(val: Self::RustType, arg_out: *mut Self) {
         debug_assert!(!arg_out.is_null());
         // SAFETY:
@@ -70,6 +173,7 @@ pub trait PassByValue: Sized {
     }
 }
 
+#[doc = include_str!("pass-by-pointer-doc.md")]
 pub trait PassByPointer: Sized {
     /// Take a value from C as an argument.
     ///
@@ -132,215 +236,5 @@ pub trait PassByPointer: Sized {
         debug_assert!(!arg_out.is_null());
         // SAFETY: see docstring
         unsafe { *arg_out = self.return_ptr() };
-    }
-}
-
-/// Support for C lists of objects referenced by value.
-///
-/// The underlying C type should have three fields, containing items, length, and capacity.  The
-/// required trait functions just fetch and set these fields.
-///
-/// The PassByValue trait will be implemented automatically, converting between the C type and
-/// `Vec<Element>`.
-///
-/// The element type can be PassByValue or PassByPointer.  If the latter, it should use either
-/// `NonNull<T>` or `Option<NonNull<T>>` to represent the element.  The latter is an "optional
-/// pointer list", where elements can be omitted.
-///
-/// For most cases, it is only necessary to implement `tc_.._free` that calls one of the
-/// drop_..._list functions.
-///
-/// # Safety
-///
-/// The C type must be documented as read-only.  None of the fields may be modified, nor anything
-/// accessible via the `items` array.  The exception is modification via "taking" elements.
-///
-/// This class guarantees that the items pointer is non-NULL for any valid list (even when len=0).
-pub trait CList: Sized {
-    type Element;
-
-    /// Create a new CList from the given items, len, and capacity.
-    ///
-    /// # Safety
-    ///
-    /// The arguments must either:
-    ///  - be NULL, 0, and 0, respectively; or
-    ///  - be valid for Vec::from_raw_parts
-    unsafe fn from_raw_parts(items: *mut Self::Element, len: usize, cap: usize) -> Self;
-
-    /// Return a mutable slice representing the elements in this list.
-    fn slice(&mut self) -> &mut [Self::Element];
-
-    /// Get the items, len, and capacity (in that order) for this instance.  These must be
-    /// precisely the same values passed tearlier to `from_raw_parts`.
-    fn into_raw_parts(self) -> (*mut Self::Element, usize, usize);
-
-    /// Generate a NULL value.  By default this is a NULL items pointer with zero length and
-    /// capacity.
-    fn null_value() -> Self {
-        // SAFETY:
-        //  - satisfies the first case in from_raw_parts' safety documentation
-        unsafe { Self::from_raw_parts(std::ptr::null_mut(), 0, 0) }
-    }
-}
-
-/// Given a CList containing pass-by-value values, drop all of the values and
-/// the list.
-///
-/// This is a convenience function for `tc_.._list_free` functions.
-///
-/// # Safety
-///
-/// - List must be non-NULL and point to a valid CL instance
-/// - The caller must not use the value array points to after this function, as
-///   it has been freed.  It will be replaced with the null value.
-pub unsafe fn drop_value_list<CL, T>(list: *mut CL)
-where
-    CL: CList<Element = T>,
-    T: PassByValue,
-{
-    debug_assert!(!list.is_null());
-
-    // SAFETY:
-    //  - *list is a valid CL (promised by caller)
-    let mut vec = unsafe { CL::take_val_from_arg(list, CL::null_value()) };
-
-    // first, drop each of the elements in turn
-    for e in vec.drain(..) {
-        // SAFETY:
-        //  - e is a valid Element (promised by caller)
-        //  - e is owned
-        drop(unsafe { PassByValue::val_from_arg(e) });
-    }
-    // then drop the vector
-    drop(vec);
-}
-
-/// Given a CList containing NonNull pointers, drop all of the pointed-to values and the list.
-///
-/// This is a convenience function for `tc_.._list_free` functions.
-///
-/// # Safety
-///
-/// - List must be non-NULL and point to a valid CL instance
-/// - The caller must not use the value array points to after this function, as
-///   it has been freed.  It will be replaced with the null value.
-#[allow(dead_code)] // this was useful once, and might be again?
-pub unsafe fn drop_pointer_list<CL, T>(list: *mut CL)
-where
-    CL: CList<Element = NonNull<T>>,
-    T: PassByPointer,
-{
-    debug_assert!(!list.is_null());
-    // SAFETY:
-    //  - *list is a valid CL (promised by caller)
-    let mut vec = unsafe { CL::take_val_from_arg(list, CL::null_value()) };
-
-    // first, drop each of the elements in turn
-    for e in vec.drain(..) {
-        // SAFETY:
-        //  - e is a valid Element (promised by caller)
-        //  - e is owned
-        drop(unsafe { PassByPointer::take_from_ptr_arg(e.as_ptr()) });
-    }
-    // then drop the vector
-    drop(vec);
-}
-
-/// Given a CList containing optional pointers, drop all of the non-null pointed-to values and the
-/// list.
-///
-/// This is a convenience function for `tc_.._list_free` functions, for lists from which items
-/// can be taken.
-///
-/// # Safety
-///
-/// - List must be non-NULL and point to a valid CL instance
-/// - The caller must not use the value array points to after this function, as
-///   it has been freed.  It will be replaced with the null value.
-pub unsafe fn drop_optional_pointer_list<CL, T>(list: *mut CL)
-where
-    CL: CList<Element = Option<NonNull<T>>>,
-    T: PassByPointer,
-{
-    debug_assert!(!list.is_null());
-    // SAFETY:
-    //  - *list is a valid CL (promised by caller)
-    let mut vec = unsafe { CL::take_val_from_arg(list, CL::null_value()) };
-
-    // first, drop each of the elements in turn
-    for e in vec.drain(..) {
-        if let Some(e) = e {
-            // SAFETY:
-            //  - e is a valid Element (promised by caller)
-            //  - e is owned
-            drop(unsafe { PassByPointer::take_from_ptr_arg(e.as_ptr()) });
-        }
-    }
-    // then drop the vector
-    drop(vec);
-}
-
-/// Take a value from an optional pointer list, returning the value and replacing its array
-/// element with NULL.
-///
-/// This is a convenience function for `tc_.._list_take` functions, for lists from which items
-/// can be taken.
-///
-/// The returned value will be None if the element has already been taken, or if the index is
-/// out of bounds.
-///
-/// # Safety
-///
-/// - List must be non-NULL and point to a valid CL instance
-pub unsafe fn take_optional_pointer_list_item<CL, T>(
-    list: *mut CL,
-    index: usize,
-) -> Option<NonNull<T>>
-where
-    CL: CList<Element = Option<NonNull<T>>>,
-    T: PassByPointer,
-{
-    debug_assert!(!list.is_null());
-
-    // SAFETy:
-    //  - list is properly aligned, dereferencable, and points to an initialized CL, since it is valid
-    //  - the lifetime of the resulting reference is limited to this function, during which time
-    //    nothing else refers to this memory.
-    let slice = unsafe { list.as_mut() }.unwrap().slice();
-    if let Some(elt_ref) = slice.get_mut(index) {
-        let mut rv = None;
-        if let Some(elt) = elt_ref.as_mut() {
-            rv = Some(*elt);
-            *elt_ref = None; // clear out the array element
-        }
-        rv
-    } else {
-        None // index out of bounds
-    }
-}
-
-impl<A> PassByValue for A
-where
-    A: CList,
-{
-    type RustType = Vec<A::Element>;
-
-    unsafe fn from_ctype(self) -> Self::RustType {
-        let (items, len, cap) = self.into_raw_parts();
-        debug_assert!(!items.is_null());
-        // SAFETY:
-        //  - CList::from_raw_parts requires that items, len, and cap be valid for
-        //    Vec::from_raw_parts if not NULL, and they are not NULL (as promised by caller)
-        //  - CList::into_raw_parts returns precisely the values passed to from_raw_parts.
-        //  - those parts are passed to Vec::from_raw_parts here.
-        unsafe { Vec::from_raw_parts(items as *mut _, len, cap) }
-    }
-
-    fn as_ctype(arg: Self::RustType) -> Self {
-        let (items, len, cap) = vec_into_raw_parts(arg);
-        // SAFETY:
-        //  - satisfies the second case in from_raw_parts' safety documentation
-        unsafe { Self::from_raw_parts(items, len, cap) }
     }
 }
