@@ -1,5 +1,8 @@
 [package]
 name = "ffizz-passby"
+description = "FFI helpers for implementing pass-by-value and pass-by-pointer"
+repository = "https://github.com/djmitche/ffizz"
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
 
