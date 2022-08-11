@@ -16,9 +16,10 @@ In most cases, this trait is used for simple types like enums with values.
 
 ```rust
 # use uuid::Uuid;
-# use ffi_passby::PassByValue;
+# use ffizz_passby::PassByValue;
 
 #[repr(C)]
+#[allow(non_camel_case_types)]
 pub struct foo_status_t {
     status: u8,
     errno: u32,
@@ -78,12 +79,13 @@ The trait can also be used for C representations of more interesting data types:
 
 ```rust
 # use uuid::Uuid;
-# use ffi_passby::PassByValue;
+# use ffizz_passby::PassByValue;
 
 /// foo_uuid_t stores a UUID.
 ///
 /// cbindgen:field-names=[bytes]
 #[repr(C)]
+#[allow(non_camel_case_types)]
 pub struct foo_uuid_t([u8; 16]);
 
 impl PassByValue for foo_uuid_t {

@@ -8,7 +8,7 @@ In more complex use-cases, it may be necessary to include a flag to indicate whi
 # Example
 
 ```rust
-use ffi_passby::PassByPointer;
+use ffizz_passby::PassByPointer;
 
 // TODO...
 
