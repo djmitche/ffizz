@@ -107,27 +107,6 @@ pub trait PassByValue: Sized {
     /// # Safety
     ///
     /// - if the value is allocated, the caller must ensure that the value is eventually freed
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use uuid::Uuid;
-    /// # use ffizz_passby::PassByValue;
-    /// # #[allow(non_camel_case_types)]
-    /// # pub struct foo_uuid_t([u8; 16]);
-    /// # impl PassByValue for foo_uuid_t {
-    /// #     type RustType = Uuid;
-    /// #     unsafe fn from_ctype(self) -> Self::RustType { todo!() }
-    /// #     fn as_ctype(arg: Uuid) -> Self { todo!() }
-    /// # }
-    /// /// Create a new, randomly-generated UUID.
-    /// #[no_mangle]
-    /// pub unsafe extern "C" fn make_uuid() -> foo_uuid_t {
-    ///    // SAFETY:
-    ///    // - value is not allocated; no concerns
-    ///    unsafe { foo_uuid_t::return_val(Uuid::new_v4()) }
-    /// }
-    /// ```
     unsafe fn return_val(arg: Self::RustType) -> Self {
         Self::as_ctype(arg)
     }

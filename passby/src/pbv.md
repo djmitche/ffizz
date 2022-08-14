@@ -12,7 +12,8 @@ The RustType must be droppable (not containing raw pointers).
 
 # Examples
 
-In most cases, this trait is used for simple types like enums with values.
+This trait is often used for compound data types.
+It is especially useful to represent Rust enums as C structs.
 
 ```rust
 # use ffizz_passby::PassByValue;
@@ -63,16 +64,9 @@ impl PassByValue for foo_status_t {
         }
     }
 }
-
-/// Get the current system status.
-#[no_mangle]
-pub unsafe extern "C" fn foo_system_status() -> foo_status_t {
-    let status: Status = Status::Ready;
-    // SAFETY:
-    // - status is not allocated
-    unsafe { foo_status_t::return_val(status) }
-}
 ```
+
+See the examples linked in each method for more details on this and other examples.
 
 The trait can also be used for C representations of more interesting data types:
 
