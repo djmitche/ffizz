@@ -31,37 +31,107 @@ pub trait OpaqueStruct: Sized {
     /// and its size must not be less than that of Self.
     type CType: Sized;
 
-    /// TODO: doc
+    /// Call the contained function with a shared reference to the data type.
+    ///
+    /// # Safety
+    ///
+    /// * cptr must not be NULL and must point to a valid (initialized) CType value
+    /// * no other thread may mutate the value pointed to by CType until with_ref returns.
     unsafe fn with_ref<T, F: Fn(&Self) -> T>(cptr: *const Self::CType, f: F) -> T {
-        let rref: &Self = unsafe { transmute_ref(cptr) };
-        f(rref)
+        check_size_and_alignment::<Self::CType, Self>();
+        // SAFETY:
+        // - casting to a pointer type with the same alignment and smaller size
+        f(unsafe { &*(cptr as *const Self) })
     }
 
-    // can't use this with uninitialized!!
-    /// TODO: doc
+    /// Call the contained function with an exclusive reference to the data type.
+    ///
+    /// # Safety
+    ///
+    /// * cptr must not be NULL and must point to a valid (initialized) CType value
+    /// * no other thread may access the value pointed to by CType until with_ref_mut returns.
     unsafe fn with_mut_ref<T, F: Fn(&mut Self) -> T>(cptr: *mut Self::CType, f: F) -> T {
-        let rref: &mut Self = unsafe { transmute_mut_ref(cptr) };
-        f(rref)
+        check_size_and_alignment::<Self::CType, Self>();
+        // SAFETY:
+        // - casting to a pointer type with the same alignment and smaller size
+        f(unsafe { &mut *(cptr as *mut Self) })
     }
 
-    /// TODO: doc
-    unsafe fn initialize(ptr: *mut Self::CType, rval: Self) {
-        let rref: &mut mem::MaybeUninit<Self> = unsafe { transmute_mut_ref(ptr) };
+    /// Initialize the value pointed to cptr with rval, "moving" rval into the pointer.
+    ///
+    /// # Safety
+    ///
+    /// * cptr must not be NULL, must be aligned for CType, and must have enough space for CType.
+    /// * to avoid a leak, the value must eventually be moved out of *cptr and into a Rust value
+    ///   to be dropped (see [`OpaqueStruct::take`])
+    unsafe fn initialize(cptr: *mut Self::CType, rval: Self) {
+        check_size_and_alignment::<Self::CType, Self>();
+        // SAFETY:
+        // - casting to a pointer type with the same alignment and smaller size
+        // - MaybeUninit<Self> has the same layout as Self
+        let rref = unsafe { &mut *(cptr as *mut mem::MaybeUninit<Self>) };
         rref.write(rval);
     }
 
-    /// TODO: doc
+    /// Return a CType containing self, moving self in the process.
+    ///
+    /// # Safety
+    ///
+    /// * to avoid a leak, the value must eventually be moved out of the return value
+    ///   and into a Rust value to be dropped (see [`OpaqueStruct::take`])
     unsafe fn return_val(self) -> Self::CType {
         check_size_and_alignment::<Self::CType, Self>();
-        unsafe { mem::transmute_copy(&mem::ManuallyDrop::new(self)) }
+        // create a new value of type Self::CType, uninitialized, and make a pointer to it
+        let mut cval = mem::MaybeUninit::<Self::CType>::uninit();
+        let cptr = &mut cval as *mut mem::MaybeUninit<Self::CType>;
+
+        // create a pointer to self
+        let selfptr = (&mem::MaybeUninit::<Self>::new(self)) as *const mem::MaybeUninit<Self>;
+
+        // cast cptr to a pointer to Self
+        // SAFETY:
+        // - casting to a pointer type with the same alignment and smaller size
+        let dest = unsafe { cptr as *mut mem::MaybeUninit<Self> };
+
+        // copy the data
+        // SAFETY:
+        // - selfptr is valid for a read of 1 x Self (it's of type MaybeUninit, but was
+        //   initialized)
+        // - dest is valid for write of 1 x Self
+        // - both are properly aligned (Rust ensures this)
+        unsafe { std::ptr::copy(selfptr, dest, 1) };
+
+        // SAFETY: dest pointed to cval, which is now valid
+        unsafe { cval.assume_init() }
     }
 
-    /// TODO: doc
+    /// Take a CType and return an owned value.
+    ///
+    /// This method is used for "xxx_free" functions, which simply drop the resulting owned value.
+    ///
+    /// It is also used for functions which are documented in the C API as consuming the given value,
+    /// saving the caller the trouble of separately freeing the value.
+    ///
+    /// The memory pointed to by cptr is zeroed to prevent accidental re-use.
+    ///
+    /// # Safety
+    ///
+    /// * cptr must not be NULL and must point to a valid (initialized) CType value
+    /// * the memory pointed to by cptr is uninitialized when this function returns
     unsafe fn take(cptr: *mut Self::CType) -> Self {
-        let mut tmp = mem::MaybeUninit::<Self>::zeroed();
-        let rref: &mut mem::MaybeUninit<Self> = unsafe { transmute_mut_ref(cptr) };
-        mem::swap(&mut tmp, rref);
-        unsafe { tmp.assume_init() }
+        check_size_and_alignment::<Self::CType, Self>();
+        // convert cptr to a reference to Self
+        // SAFETY:
+        // - casting to a pointer type with the same alignment and smaller size
+        let rref = unsafe { &mut *(cptr as *mut mem::MaybeUninit<Self>) };
+
+        // replace that with a zero value, and get what was there as an owned
+        // value
+        let owned = mem::replace(rref, mem::MaybeUninit::<Self>::zeroed());
+
+        // SAFETY:
+        //  - owned contains what cptr was pointing to, which the caller guaranteed to be valid
+        unsafe { owned.assume_init() }
     }
 }
 
@@ -71,20 +141,6 @@ pub trait OpaqueStruct: Sized {
 fn check_size_and_alignment<CType: Sized, RType: Sized>() {
     debug_assert!(mem::size_of::<RType>() <= mem::size_of::<CType>());
     debug_assert!(mem::align_of::<RType>() == mem::align_of::<CType>());
-}
-
-/// TODO: doc, safety
-unsafe fn transmute_ref<'a, CType: Sized, RType: Sized>(cval: *const CType) -> &'a RType {
-    check_size_and_alignment::<CType, RType>();
-    let cref = unsafe { &*cval };
-    unsafe { std::mem::transmute(cref) }
-}
-
-/// TODO: doc, safety
-unsafe fn transmute_mut_ref<'a, CType: Sized, RType: Sized>(cval: *mut CType) -> &'a mut RType {
-    check_size_and_alignment::<CType, RType>();
-    let cref = unsafe { &mut *cval };
-    unsafe { std::mem::transmute(cref) }
 }
 
 mod test {

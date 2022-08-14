@@ -55,33 +55,65 @@ pub unsafe extern "C" fn byte_buffer_push(bb: *mut byte_buffer_t, b: u8) {
     unsafe { ByteBuffer::with_mut_ref(bb, |bb| bb.0.push(b)) }
 }
 
+/// Combine two byte buffers, returning a new byte buffer containing the bytes
+/// from both inputs.  This function consumes its inputs and they must not be
+/// used after it returns.
+#[no_mangle]
+pub unsafe extern "C" fn byte_buffer_combine(
+    bb1: *mut byte_buffer_t,
+    bb2: *mut byte_buffer_t,
+) -> byte_buffer_t {
+    let mut bb1 = unsafe { ByteBuffer::take(bb1) };
+    let bb2 = unsafe { ByteBuffer::take(bb2) };
+
+    // modify bb1 in place (but it's not in the caller's location anymore)
+    bb1.0.extend(&bb2.0[..]);
+    unsafe { ByteBuffer::return_val(bb1) }
+}
+
 fn main() {
-    let mut bb = unsafe { byte_buffer_new() };
+    let mut bb1 = unsafe { byte_buffer_new() };
     assert_eq!(
-        unsafe { byte_buffer_checksum(&bb as *const byte_buffer_t) },
+        unsafe { byte_buffer_checksum(&bb1 as *const byte_buffer_t) },
         0
     );
 
     unsafe {
-        byte_buffer_push(&mut bb as *mut byte_buffer_t, 0xf0);
-        byte_buffer_push(&mut bb as *mut byte_buffer_t, 0x0f);
+        byte_buffer_push(&mut bb1 as *mut byte_buffer_t, 0xf0);
+        byte_buffer_push(&mut bb1 as *mut byte_buffer_t, 0x0f);
     }
 
     assert_eq!(
-        unsafe { byte_buffer_checksum(&bb as *const byte_buffer_t) },
+        unsafe { byte_buffer_checksum(&bb1 as *const byte_buffer_t) },
         0xff
     );
 
-    unsafe { byte_buffer_free(&mut bb as *mut byte_buffer_t) };
-
-    // note: `bb` is uninitialized here -- testing C APIs in Rust is hard!
-
+    let mut bb2: byte_buffer_t = unsafe { std::mem::zeroed() }; // this is easier in C!
     unsafe {
-        byte_buffer_init(&mut bb as *mut byte_buffer_t);
+        byte_buffer_init(&mut bb2 as *mut byte_buffer_t);
+    }
+    unsafe {
+        byte_buffer_push(&mut bb2 as *mut byte_buffer_t, 0xa5);
+        byte_buffer_push(&mut bb2 as *mut byte_buffer_t, 0x5b);
     }
     assert_eq!(
-        unsafe { byte_buffer_checksum(&bb as *const byte_buffer_t) },
-        0
+        unsafe { byte_buffer_checksum(&bb2 as *const byte_buffer_t) },
+        0xfe
     );
-    unsafe { byte_buffer_free(&mut bb as *mut byte_buffer_t) };
+
+    let mut bb3 = unsafe {
+        byte_buffer_combine(
+            &mut bb1 as *mut byte_buffer_t,
+            &mut bb2 as *mut byte_buffer_t,
+        )
+    };
+
+    // -- note that bb1 and bb2 are invalid now.  Sorry, Rust!
+
+    assert_eq!(
+        unsafe { byte_buffer_checksum(&bb3 as *const byte_buffer_t) },
+        0xff ^ 0xfe
+    );
+
+    unsafe { byte_buffer_free(&mut bb3 as *mut byte_buffer_t) };
 }
