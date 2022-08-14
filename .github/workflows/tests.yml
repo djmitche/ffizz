@@ -37,3 +37,6 @@ jobs:
 
       - name: run status example
         run: cargo run --example status
+
+      - name: run uuid example
+        run: cargo run --example uuid

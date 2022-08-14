@@ -12,6 +12,7 @@ edition = "2021"
 
 [dev-dependencies]
 uuid = { version = "^1.1.2", features = ["v4"] }
+libc = "0.2.129"
 
 [package.metadata.docs.rs]
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]

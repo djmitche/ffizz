@@ -90,35 +90,6 @@ pub trait PassByPointer: Sized {
     /// - the caller must ensure that the value is eventually freed
     /// - arg_out must not be NULL
     /// - arg_out must point to valid, properly aligned memory for a pointer value
-    ///
-    /// # Example
-    ///
-    /// This method is useful for constructors that return multiple values.
-    ///
-    /// ```
-    /// # use ffizz_passby::PassByPointer;
-    /// # struct Endpoint { }
-    /// # fn pipeline() -> (Endpoint, Endpoint) { todo!() }
-    /// # #[allow(non_camel_case_types)]
-    /// # pub struct rpipe_endpoint_t (Endpoint);
-    /// # impl PassByPointer for rpipe_endpoint_t { }
-    /// /// Create a pipeline, represented as two linked endpoints.  Both
-    /// /// pointers must be non-NULL and point to a valid memory location.
-    /// /// Each endpoint must be freed to avoid a resource leak.
-    /// #[no_mangle]
-    /// pub unsafe extern "C" fn rpipe_new(
-    ///     left: *mut *mut rpipe_endpoint_t,
-    ///     right: *mut *mut rpipe_endpoint_t) {
-    ///     let (l, r) = pipeline();
-    ///     // SAFETY:
-    ///     // - function docs indicate values must be freed
-    ///     // - function docs indicate left and right are not NULL and valid
-    ///     unsafe {
-    ///         rpipe_endpoint_t(l).ptr_to_arg_out(left);
-    ///         rpipe_endpoint_t(r).ptr_to_arg_out(right);
-    ///     }
-    /// }
-    /// ```
     unsafe fn ptr_to_arg_out(self, arg_out: *mut *mut Self) {
         debug_assert!(!arg_out.is_null());
         // SAFETY: see docstring

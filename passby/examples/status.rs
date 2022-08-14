@@ -1,4 +1,5 @@
 #![warn(unsafe_op_in_unsafe_fn)]
+#![allow(non_camel_case_types)]
 #![allow(unused_unsafe)]
 
 use ffizz_passby::{PassByPointer, PassByValue};
@@ -22,6 +23,13 @@ mod hittr {
             System {
                 status: Status::Ready,
             }
+        }
+
+        pub fn new_network(_port: u16) -> Result<System, ()> {
+            // (this constructor is just to have an example of a fallible constructor)
+            Ok(System {
+                status: Status::Ready,
+            })
         }
 
         pub fn run(&mut self) {
@@ -123,6 +131,27 @@ pub unsafe extern "C" fn hittr_system_new() -> *mut hittr_system_t {
     unsafe { hittr_system_t(sys).return_ptr() }
 }
 
+/// Create a new Hittr system with a network port.  This returns true
+/// on success.  On failure, the output argument is not changed.
+///
+/// # Safety
+///
+/// The system_out argument must ne non-NULL and point to a valid, properly aligned
+/// `*hittr_system_t`.  The returned hittr_system_t must be freed with hittr_system_free.
+#[no_mangle]
+pub unsafe extern "C" fn hittr_system_new_network(
+    system_out: *mut *mut hittr_system_t,
+    port: u16,
+) -> bool {
+    if let Ok(sys) = System::new_network(port) {
+        // SAFETY: see docstring
+        unsafe { hittr_system_t(sys).ptr_to_arg_out(system_out) }
+        true
+    } else {
+        false
+    }
+}
+
 /// Free a Hittr system.
 ///
 /// # Safety
@@ -214,4 +243,11 @@ fn main() {
     assert_eq!(st.count, 0);
 
     unsafe { hittr_system_free(sys) };
+
+    // this is awkward to call from Rust, but would be pretty natural in C
+    let mut sys: *mut hittr_system_t = std::ptr::null_mut();
+    assert!(unsafe { hittr_system_new_network(&mut sys as *mut *mut hittr_system_t, 1300) });
+    let st = unsafe { hittr_system_status(sys) };
+    assert_eq!(st.status, HITTR_STATUS_READY);
+    assert_eq!(st.count, 0);
 }

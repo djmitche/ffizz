@@ -1,4 +1,12 @@
-#[doc = include_str!("pbv.md")]
+/// This trait supports passing data to Rust by value.
+///
+/// Pass-by-values implies that values are copyable, via assignment in C, so this
+/// trait is typically used to represent Copy values, and in particular values that
+/// do not contain pointers.
+///
+/// The Rust and C types may differ, with [`PassByValue::from_ctype`] and [`PassByValue::as_ctype`]
+/// converting between them.  Implement this trait for the C type and specify the
+/// Rust type as [`PassByValue::RustType`].
 pub trait PassByValue: Sized {
     /// The Rust representation of this type.
     type RustType;
@@ -14,35 +22,12 @@ pub trait PassByValue: Sized {
     /// Convert a Rust value to a C value.
     fn as_ctype(arg: Self::RustType) -> Self;
 
-    /// Take a value from C as an argument.
+    /// Copy a value from C as an argument.
     ///
     /// # Safety
     ///
     /// - `self` must be a valid instance of the C type.  This is typically ensured either by
     ///   requiring that C code not modify it, or by defining the valid values in C comments.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use uuid::Uuid;
-    /// # use ffizz_passby::PassByValue;
-    /// # #[allow(non_camel_case_types)]
-    /// # pub struct foo_uuid_t([u8; 16]);
-    /// # impl PassByValue for foo_uuid_t {
-    /// #     type RustType = Uuid;
-    /// #     unsafe fn from_ctype(self) -> Self::RustType { todo!() }
-    /// #     fn as_ctype(arg: Uuid) -> Self { todo!() }
-    /// # }
-    /// /// Determine the version for the given UUID.  The given UUID must be valid.
-    /// #[no_mangle]
-    /// pub unsafe extern "C" fn uuid_version(uuid: foo_uuid_t) -> usize {
-    ///     // SAFETY:
-    ///     // - uuid is a valid foo_uuid_t (see docstring)
-    ///     // - uuid is Copy so ownership doesn't matter
-    ///     let uuid = unsafe { foo_uuid_t::val_from_arg(uuid) };
-    ///     return uuid.get_version_num()
-    /// }
-    /// ```
     unsafe fn val_from_arg(arg: Self) -> Self::RustType {
         // SAFETY:
         //  - arg is a valid CType (see docstring)
@@ -111,41 +96,14 @@ pub trait PassByValue: Sized {
         Self::as_ctype(arg)
     }
 
-    /// Return a value to C, via an "output parameter"
+    /// Return a value to C, via an "output parameter".
+    ///
+    /// This is common in functions returning a new value along with some success indication.
     ///
     /// # Safety
     ///
     /// - `arg_out` must not be NULL and must be properly aligned and pointing to valid memory
     ///   of the size of CType.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use uuid::Uuid;
-    /// # use ffizz_passby::PassByValue;
-    /// # #[allow(non_camel_case_types)]
-    /// # pub struct foo_uuid_t([u8; 16]);
-    /// # impl PassByValue for foo_uuid_t {
-    /// #     type RustType = Uuid;
-    /// #     unsafe fn from_ctype(self) -> Self::RustType { todo!() }
-    /// #     fn as_ctype(arg: Uuid) -> Self { todo!() }
-    /// # }
-    /// /// Create a pair of UUIDs entangled at the quantum level.  Both pointers
-    /// /// must be properly aligned and pointing to valid memory to contain a
-    /// /// foo_uuid_t.
-    /// #[no_mangle]
-    /// pub unsafe extern "C" fn foo_uuid_entangled_pair(
-    ///     u1: *mut foo_uuid_t, u2: *mut foo_uuid_t) {
-    ///    // SAFETY:
-    ///    // - u1, u2 are not NULL, properly aligned, and point to valid memory
-    ///    //   (see docstring)
-    ///    unsafe {
-    ///        // MVP: just use random uuids until quantum entanglement is possible
-    ///        foo_uuid_t::val_to_arg_out(Uuid::new_v4(), u1);
-    ///        foo_uuid_t::val_to_arg_out(Uuid::new_v4(), u2);
-    ///    }
-    /// }
-    /// ```
     unsafe fn val_to_arg_out(val: Self::RustType, arg_out: *mut Self) {
         debug_assert!(!arg_out.is_null());
         // SAFETY:
