@@ -40,3 +40,6 @@ jobs:
 
       - name: run uuid example
         run: cargo run --example uuid
+
+      - name: run bytebuf example
+        run: cargo run --example bytebuf
