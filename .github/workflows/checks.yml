@@ -1,0 +1,66 @@
+name: Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    name: "Clippy"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache cargo registry
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v2
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          # Fixed version for clippy lints.  Bump this as necesary.  It must not
+          # be older than the MSRV in tests.yml.
+          toolchain: "1.57"
+          override: true
+
+      - uses: actions-rs/cargo@v1.0.1
+        with:
+          command: check
+
+      - run: rustup component add clippy
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+          name: "Clippy Results"
+
+  fmt:
+    runs-on: ubuntu-latest
+    name: "Formatting"
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: rustfmt
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
