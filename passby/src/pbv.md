@@ -15,7 +15,6 @@ The RustType must be droppable (not containing raw pointers).
 In most cases, this trait is used for simple types like enums with values.
 
 ```rust
-# use uuid::Uuid;
 # use ffizz_passby::PassByValue;
 
 # #[allow(non_camel_case_types)]
@@ -23,7 +22,7 @@ In most cases, this trait is used for simple types like enums with values.
 pub struct foo_status_t {
     status: u8,
     errno: u32,
-};
+}
 
 pub const FOO_STATUS_READY: u8 = 1;
 pub const FOO_STATUS_RUNNING: u8 = 2;

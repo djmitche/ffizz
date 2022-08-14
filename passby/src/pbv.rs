@@ -1,4 +1,4 @@
-#[doc = include_str!("pass-by-value-doc.md")]
+#[doc = include_str!("pbv.md")]
 pub trait PassByValue: Sized {
     /// The Rust representation of this type.
     type RustType;

@@ -1,4 +1,4 @@
-#[doc = include_str!("pass-by-pointer-doc.md")]
+#[doc = include_str!("pbp.md")]
 pub trait PassByPointer: Sized {
     /// Take a value from C as an argument.
     ///
