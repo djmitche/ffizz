@@ -1,8 +1,9 @@
 [workspace]
 
 members = [ 
-    "passby",
     "header",
     "macros",
+    "passby",
+    "string",
     "tests/simplib",
 ]

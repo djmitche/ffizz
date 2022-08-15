@@ -1,0 +1,22 @@
+[package]
+name = "ffizz-string"
+description = "FFI string implementation"
+repository = "https://github.com/djmitche/ffizz"
+readme = "src/crate-doc.md"
+documentation = "https://docs.rs/ffizz-string"
+license = "MIT"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+ffizz-passby = { path = "../passby" }
+libc = "0.2.131"
+
+[dev-dependencies]
+uuid = { version = "^1.1.2", features = ["v4"] }
+ffizz-header = { path = "../header" }
+libc = "0.2.129"
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]
+
