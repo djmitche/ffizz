@@ -5,8 +5,8 @@
 /// do not contain pointers.
 ///
 /// The Rust and C types may differ, with [`PassByValue::from_ctype`] and [`PassByValue::as_ctype`]
-/// converting between them.  Implement this trait for the C type and specify the
-/// Rust type as [`PassByValue::RustType`].
+/// converting between them.  These typically provide some simple conversion between a C-style
+/// data structure and a more ergonomic Rust type.
 pub trait PassByValue: Sized {
     /// The C representation of this type.
     type CType: Sized;
