@@ -5,7 +5,9 @@
 use ffizz_passby::PassByValue;
 use libc::c_char;
 use std::ffi::CStr;
-use uuid::Uuid;
+
+/// A newtype to contain a Uuid.
+struct Uuid(uuid::Uuid);
 
 // NOTE: this must be a simple constant so that cbindgen can evaluate it
 /// Length, in bytes, of the string representation of a UUID (without NUL terminator)
@@ -18,17 +20,17 @@ pub const UUID_STRING_BYTES: usize = 36;
 #[repr(C)]
 pub struct uuid_t([u8; 16]);
 
-impl PassByValue for uuid_t {
-    type RustType = Uuid;
+impl PassByValue for Uuid {
+    type CType = uuid_t;
 
-    unsafe fn from_ctype(self) -> Self::RustType {
+    unsafe fn from_ctype(cval: uuid_t) -> Self {
         // SAFETY:
         //  - any 16-byte value is a valid Uuid
-        Uuid::from_bytes(self.0)
+        Uuid(uuid::Uuid::from_bytes(cval.0))
     }
 
-    fn as_ctype(arg: Uuid) -> Self {
-        uuid_t(*arg.as_bytes())
+    fn as_ctype(self) -> uuid_t {
+        uuid_t(*self.0.as_bytes())
     }
 }
 
@@ -37,7 +39,7 @@ impl PassByValue for uuid_t {
 pub unsafe extern "C" fn uuid_new_v4() -> uuid_t {
     // SAFETY:
     // - value is not allocated
-    unsafe { uuid_t::return_val(Uuid::new_v4()) }
+    unsafe { Uuid(uuid::Uuid::new_v4()).return_val() }
 }
 
 /// Create a new UUID with the nil value.
@@ -45,7 +47,7 @@ pub unsafe extern "C" fn uuid_new_v4() -> uuid_t {
 pub unsafe extern "C" fn uuid_nil() -> uuid_t {
     // SAFETY:
     // - value is not allocated
-    unsafe { uuid_t::return_val(Uuid::nil()) }
+    unsafe { Uuid(uuid::Uuid::nil()).return_val() }
 }
 
 /// Get the version of the given UUID.
@@ -53,8 +55,8 @@ pub unsafe extern "C" fn uuid_nil() -> uuid_t {
 pub unsafe extern "C" fn uuid_version(uuid: uuid_t) -> usize {
     // SAFETY:
     //  - tcuuid is a valid uuid_t (all byte patterns are valid)
-    let uuid: Uuid = unsafe { uuid_t::val_from_arg(uuid) };
-    uuid.get_version_num()
+    let uuid: Uuid = unsafe { Uuid::val_from_arg(uuid) };
+    uuid.0.get_version_num()
 }
 
 /// Write the string representation of a uuid_t into the given buffer, which must be
@@ -76,8 +78,8 @@ pub unsafe extern "C" fn uuid_to_buf(tcuuid: uuid_t, buf: *mut c_char) {
         unsafe { std::slice::from_raw_parts_mut(buf as *mut u8, UUID_STRING_BYTES) };
     // SAFETY:
     //  - tcuuid is a valid uuid_t (all byte patterns are valid)
-    let uuid: Uuid = unsafe { uuid_t::val_from_arg(tcuuid) };
-    uuid.as_hyphenated().encode_lower(buf);
+    let uuid: Uuid = unsafe { Uuid::val_from_arg(tcuuid) };
+    uuid.0.as_hyphenated().encode_lower(buf);
 }
 
 /// Parse the given string as a UUID.  Returns false on parse failure or if the given
@@ -96,11 +98,11 @@ pub unsafe extern "C" fn uuid_from_str(s: *const c_char, uuid_out: *mut uuid_t) 
     //  - s is valid (see docstring)
     let s = unsafe { CStr::from_ptr(s) };
     if let Ok(s) = s.to_str() {
-        if let Ok(u) = Uuid::parse_str(s) {
+        if let Ok(u) = uuid::Uuid::parse_str(s) {
             // SAFETY:
             //  - uuid_out is not NULL (see docstring)
             //  - alignment is not required
-            unsafe { uuid_t::val_to_arg_out(u, uuid_out) };
+            unsafe { Uuid::val_to_arg_out(Uuid(u), uuid_out) };
             return true;
         }
     }

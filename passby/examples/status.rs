@@ -69,20 +69,20 @@ mod status {
     pub const HITTR_STATUS_RUNNING: u8 = 2;
     pub const HITTR_STATUS_FAILED: u8 = 3;
 
-    impl PassByValue for hittr_status_t {
-        type RustType = Status;
+    impl PassByValue for Status {
+        type CType = hittr_status_t;
 
-        unsafe fn from_ctype(self) -> Self::RustType {
-            match self.status {
+        unsafe fn from_ctype(cval: hittr_status_t) -> Self {
+            match cval.status {
                 HITTR_STATUS_READY => Status::Ready,
-                HITTR_STATUS_RUNNING => Status::Running { count: self.count },
+                HITTR_STATUS_RUNNING => Status::Running { count: cval.count },
                 HITTR_STATUS_FAILED => Status::Failed,
                 _ => panic!("invalid status value"),
             }
         }
 
-        fn as_ctype(arg: Self::RustType) -> Self {
-            match arg {
+        fn as_ctype(self) -> hittr_status_t {
+            match self {
                 Status::Ready => hittr_status_t {
                     status: HITTR_STATUS_READY,
                     count: 0,
@@ -214,7 +214,7 @@ pub unsafe extern "C" fn hittr_system_status(system: *const hittr_system_t) -> h
     let system = &unsafe { hittr_system_t::from_ptr_arg_ref(system) }.0;
     // SAFETY:
     // - hittr_status_t is not allocated, so no issues
-    unsafe { hittr_status_t::return_val(system.status) }
+    unsafe { system.status.return_val() }
 }
 
 fn main() {
