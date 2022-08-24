@@ -86,18 +86,16 @@ fn with_error<T: std::fmt::Display>(mut existing: TokenStream2, error: T) -> Tok
 /// Return a token stream containing the existing content as well as a declaration of the given
 /// header item
 fn with_header_item(mut existing: TokenStream2, header: HeaderItem) -> TokenStream2 {
-    // NOTE: we can't use `#[::linkme::distributed_slice(HEADER_ITEMS)]` here because it assume
-    // that `linkme` is in the dependencies of the crate being compiled.  We do not want to "leak"
-    // the dependency on linkme, so this is manually expanded.
     let HeaderItem {
         order,
         name,
         content,
     } = header;
+    let item_name = syn::Ident::new(&format!("FFIZZ_HDR__{}", name), Span::call_site());
     let addition: TokenStream2 = quote! {
-        #[used]
-        #[link_section = "linkme_HEADER_ITEMS"]
-        static HEADER_ITEM: ::ffizz_header::HeaderItem = ::ffizz_header::HeaderItem {
+        #[::ffizz_header::linkme::distributed_slice(::ffizz_header::FFIZZ_HEADER_ITEMS)]
+        #[linkme(crate=::ffizz_header::linkme)]
+        static #item_name: ::ffizz_header::HeaderItem = ::ffizz_header::HeaderItem {
             order: #order,
             name: #name,
             content: #content,

@@ -18,14 +18,14 @@ pub struct HeaderItem {
     pub content: &'static str,
 }
 
-/// HEADER_ITEMS collects HeaderItems using `linkme`.
+/// FFIZZ_HEADER_ITEMS collects HeaderItems using `linkme`.
 #[distributed_slice]
-pub static HEADER_ITEMS: [HeaderItem] = [..];
+pub static FFIZZ_HEADER_ITEMS: [HeaderItem] = [..];
 
 /// Generate the C header for this library.  This sorts all HeaderItems and then combines them
 /// into a single string.
 pub fn generate() -> String {
-    generate_from_vec(HEADER_ITEMS.iter().collect::<Vec<_>>())
+    generate_from_vec(FFIZZ_HEADER_ITEMS.iter().collect::<Vec<_>>())
 }
 
 /// Inner function that does not operate on a static value.
