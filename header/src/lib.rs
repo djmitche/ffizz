@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 pub use linkme;
 
 /// TODO doc
-pub use ffizz_macros::function;
+pub use ffizz_macros::item;
 
 /// A HeaderItem contains an item that should be included in the output C header.  Only the
 /// `content` field will actually appear, with the other fields used to ensure a stable order for
@@ -28,7 +28,7 @@ pub fn generate() -> String {
     generate_from_vec(FFIZZ_HEADER_ITEMS.iter().collect::<Vec<_>>())
 }
 
-/// Inner function that does not operate on a static value.
+/// Inner version of generate that does not operate on a static value.
 fn generate_from_vec(mut items: Vec<&'static HeaderItem>) -> String {
     items.sort_by(
         |a: &&'static HeaderItem, b: &&'static HeaderItem| match a.order.cmp(&b.order) {

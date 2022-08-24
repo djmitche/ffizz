@@ -1,4 +1,4 @@
-#[ffizz_header::function]
+#[ffizz_header::item]
 /// This is my function
 /// Another line
 ///
