@@ -2,4 +2,7 @@
 
 members = [ 
     "passby",
+    "header",
+    "macros",
+    "tests/simplib",
 ]

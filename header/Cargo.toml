@@ -1,0 +1,17 @@
+[package]
+name = "ffizz-header"
+description = "FFI helpers to generate a C header for your library"
+repository = "https://github.com/djmitche/ffizz"
+readme = "src/crate-doc.md"
+documentation = "https://docs.rs/ffizz-header"
+license = "MIT"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+linkme = "0.3.3"
+itertools = "0.10"
+ffizz-macros = { path = "../macros" }
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]
