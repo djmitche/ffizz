@@ -1,5 +1,5 @@
 #[ffizz_header::item]
-#[header_name = "subtract"]
+#[ffizz(name = "subtract")]
 /// This is my function
 /// Another line
 ///
@@ -12,11 +12,18 @@ pub unsafe extern "C" fn add(left: usize, right: usize) -> usize {
 }
 
 ffizz_header::snippet! {
-#[header_name="foo"]
-#[header_order=200]
+#[ffizz(name="foo")]
+#[ffizz(order=200)]
 /// foo
 /// bar
 }
+
+#[ffizz_header::item]
+/**
+ * This doc..
+ */
+#[allow(dead_code)]
+type X = usize;
 
 pub fn generate_header() -> String {
     ffizz_header::generate()
@@ -38,7 +45,16 @@ mod tests {
         assert_eq!(
             super::generate_header(),
             String::from(
-                "// This is my function\n// Another line\n//\n usize add(usize left, usize right);\n"
+                "// This doc..
+
+// This is my function
+// Another line
+//
+usize add(usize left, usize right);
+
+// foo
+// bar
+"
             )
         );
     }

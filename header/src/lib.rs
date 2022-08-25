@@ -4,7 +4,6 @@ use std::cmp::Ordering;
 
 pub use linkme;
 
-/// TODO doc
 pub use ffizz_macros::item;
 pub use ffizz_macros::snippet;
 
