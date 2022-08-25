@@ -6,6 +6,7 @@ pub use linkme;
 
 /// TODO doc
 pub use ffizz_macros::item;
+pub use ffizz_macros::snippet;
 
 /// A HeaderItem contains an item that should be included in the output C header.  Only the
 /// `content` field will actually appear, with the other fields used to ensure a stable order for

@@ -1,4 +1,5 @@
 #[ffizz_header::item]
+#[header_name = "subtract"]
 /// This is my function
 /// Another line
 ///
@@ -8,6 +9,13 @@
 #[no_mangle]
 pub unsafe extern "C" fn add(left: usize, right: usize) -> usize {
     left + right
+}
+
+ffizz_header::snippet! {
+#[header_name="foo"]
+#[header_order=200]
+/// foo
+/// bar
 }
 
 pub fn generate_header() -> String {
