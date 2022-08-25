@@ -14,6 +14,22 @@ pub(crate) struct DocItem {
 impl Parse for DocItem {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut item = input.parse::<syn::Item>()?;
+
+        /// Recurse down the use-tree until a single identifier is found,
+        /// or fail if there are multiple (via Glob or Group).
+        fn use_ident(tree: &syn::UseTree) -> Result<String> {
+            match tree {
+                syn::UseTree::Name(name) => Ok(name.ident.to_string()),
+                syn::UseTree::Path(path) => use_ident(path.tree.as_ref()),
+                syn::UseTree::Rename(rename) => Ok(rename.rename.to_string()),
+                _ => {
+                    return Err(Error::new_spanned(
+                        tree,
+                        "only single-item 'use' statements are supported",
+                    ));
+                }
+            }
+        }
         let (name, attrs) = match &mut item {
             syn::Item::Fn(item) => (item.sig.ident.to_string(), &mut item.attrs),
             syn::Item::Const(item) => (item.ident.to_string(), &mut item.attrs),
@@ -22,7 +38,7 @@ impl Parse for DocItem {
             syn::Item::Enum(item) => (item.ident.to_string(), &mut item.attrs),
             syn::Item::Union(item) => (item.ident.to_string(), &mut item.attrs),
             syn::Item::Type(item) => (item.ident.to_string(), &mut item.attrs),
-            // TODO: Use (no support for globs or groups)
+            syn::Item::Use(item) => (use_ident(&item.tree)?, &mut item.attrs),
             _ => {
                 return Err(Error::new_spanned(
                     item,
@@ -157,6 +173,54 @@ mod test {
             HeaderItem {
                 order: 100,
                 name: "Foo".into(),
+                content: "// A docstring".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_parsing_use_name() {
+        let di: DocItem = syn::parse_quote! {
+            /// A docstring
+            use foo;
+        };
+        assert_eq!(
+            di.header_item,
+            HeaderItem {
+                order: 100,
+                name: "foo".into(),
+                content: "// A docstring".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_parsing_use_path() {
+        let di: DocItem = syn::parse_quote! {
+            /// A docstring
+            pub use xxx::foo;
+        };
+        assert_eq!(
+            di.header_item,
+            HeaderItem {
+                order: 100,
+                name: "foo".into(),
+                content: "// A docstring".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_parsing_use_rename() {
+        let di: DocItem = syn::parse_quote! {
+            /// A docstring
+            use xxx::foo as bar;
+        };
+        assert_eq!(
+            di.header_item,
+            HeaderItem {
+                order: 100,
+                name: "bar".into(),
                 content: "// A docstring".into(),
             }
         );

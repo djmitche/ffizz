@@ -14,5 +14,4 @@ proc-macro = true
 itertools = "0.10"
 quote = "1.0.21"
 proc-macro2 = "1.0.43"
-# TODO: remove extra-traits
 syn = { version = "1.0.99", features=["full", "extra-traits"] }
