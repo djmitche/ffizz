@@ -1,0 +1,17 @@
+[package]
+name = "ffizz-macros"
+description = "FFI helper macros (typically not depended on directly)"
+repository = "https://github.com/djmitche/ffizz"
+documentation = "https://docs.rs/ffizz-macros"
+license = "MIT"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+itertools = "0.10"
+quote = "1.0.21"
+proc-macro2 = "1.0.43"
+syn = { version = "1.0.99", features=["full", "extra-traits"] }

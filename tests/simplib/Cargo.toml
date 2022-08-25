@@ -1,0 +1,8 @@
+[package]
+name = "ffizz-tests-simplib"
+description = "Simple library only using the ffizz-header functionality"
+version = "0.1.0"
+publish = false
+
+[dependencies]
+ffizz-header = { path = "../../header" }
