@@ -2,15 +2,18 @@ use itertools::join;
 use linkme::distributed_slice;
 use std::cmp::Ordering;
 
+#[doc(hidden)]
 pub use linkme;
 
 pub use ffizz_macros::item;
 pub use ffizz_macros::snippet;
 
-/// A HeaderItem contains an item that should be included in the output C header.  Only the
-/// `content` field will actually appear, with the other fields used to ensure a stable order for
-/// the items.  `order` is used for coarse-grained ordering, such as putting introductory comments
-/// at the top.  For items with equal `order`, `name` is used to sort.
+/// A HeaderItem contains an item that should be included in the output C header.
+///
+/// Only the `content` field will actually appear, with the other fields used to ensure a stable
+/// order for the items.  `order` is used for coarse-grained ordering, such as putting introductory
+/// comments at the top.  For items with equal `order`, `name` is used to sort.
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct HeaderItem {
     pub order: usize,
@@ -19,11 +22,14 @@ pub struct HeaderItem {
 }
 
 /// FFIZZ_HEADER_ITEMS collects HeaderItems using `linkme`.
+#[doc(hidden)]
 #[distributed_slice]
 pub static FFIZZ_HEADER_ITEMS: [HeaderItem] = [..];
 
-/// Generate the C header for this library.  This sorts all HeaderItems and then combines them
-/// into a single string.
+/// Generate the C header for the library.
+///
+/// This "magically" concatenates all of the header chunks supplied by `item` and `snippet` macro
+/// invocations throughout all crates used to build the library.
 pub fn generate() -> String {
     generate_from_vec(FFIZZ_HEADER_ITEMS.iter().collect::<Vec<_>>())
 }
