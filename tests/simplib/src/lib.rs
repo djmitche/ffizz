@@ -13,14 +13,16 @@ pub unsafe extern "C" fn add(left: usize, right: usize) -> usize {
 
 ffizz_header::snippet! {
 #[ffizz(name="foo")]
-#[ffizz(order=200)]
-/// foo
-/// bar
+#[ffizz(order=0)]
+/// LIBRARY OVERVIEW
 }
 
 #[ffizz_header::item]
 /**
- * This doc..
+ * X is cool
+ * ```c
+ * typedef usize X;
+ * ```
  */
 #[allow(dead_code)]
 type X = usize;
@@ -45,15 +47,14 @@ mod tests {
         assert_eq!(
             super::generate_header(),
             String::from(
-                "// This doc..
+                "// LIBRARY OVERVIEW
+
+// X is cool
+typedef usize X;
 
 // This is my function
 // Another line
-//
 usize add(usize left, usize right);
-
-// foo
-// bar
 "
             )
         );

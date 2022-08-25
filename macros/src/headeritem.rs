@@ -166,17 +166,35 @@ impl HeaderItem {
     /// Parse a docstring, presented as a vec of lines, to extract C declarations and comments.
     pub(crate) fn parse_content(doc: Vec<String>) -> String {
         let mut content = vec![];
-        let mut decl = false;
+        let mut in_decl = false;
+        let mut strip_new_blank_comments = true;
+
+        /// strip trailing blank comment lines
+        fn strip_trailing_blank_comments(lines: &mut Vec<String>) {
+            while let Some(line) = lines.last() {
+                if line == "//" {
+                    lines.pop();
+                } else {
+                    break;
+                }
+            }
+        }
+
         for line in doc {
-            if decl {
+            if in_decl {
                 if line.trim() == "```" {
-                    decl = false;
+                    in_decl = false;
+                    strip_new_blank_comments = true;
                     continue;
                 }
                 content.push(line);
             } else {
+                if strip_new_blank_comments && line == "" {
+                    continue;
+                }
                 if line.trim() == "```c" {
-                    decl = true;
+                    in_decl = true;
+                    strip_trailing_blank_comments(&mut content);
                     continue;
                 }
                 if line.len() > 0 {
@@ -184,26 +202,11 @@ impl HeaderItem {
                 } else {
                     content.push("//".to_string());
                 }
+                strip_new_blank_comments = false;
             }
         }
 
-        // strip leading blank lines
-        while let Some(line) = content.first() {
-            if line == "//" {
-                content.remove(0);
-            } else {
-                break;
-            }
-        }
-
-        // strip trailing blank lines
-        while let Some(line) = content.last() {
-            if line == "//" {
-                content.pop();
-            } else {
-                break;
-            }
-        }
+        strip_trailing_blank_comments(&mut content);
 
         itertools::join(content, "\n")
     }
@@ -447,13 +450,17 @@ mod test {
         assert_eq!(
             HeaderItem::parse_content(vec![
                 "aaa".to_string(),
+                "".to_string(),
                 "```c".to_string(),
                 "void foo(void);".to_string(),
                 "```".to_string(),
+                "".to_string(),
                 "bbb".to_string(),
+                "".to_string(),
                 "```c".to_string(),
                 "void bar(void);".to_string(),
                 "```".to_string(),
+                "".to_string(),
             ]),
             "// aaa\nvoid foo(void);\n// bbb\nvoid bar(void);".to_string()
         );
