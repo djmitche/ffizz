@@ -213,7 +213,7 @@ impl HeaderItem {
 
     /// Write the content of this HeaderItem into a TokenStream such that the resulting binary will
     /// include the HeaderItem in its `::ffizz_header::FFIZZ_HEADER_ITEMS` array.
-    pub(crate) fn to_tokens(self, tokens: &mut TokenStream2) {
+    pub(crate) fn to_tokens(&self, tokens: &mut TokenStream2) {
         let HeaderItem {
             order,
             name,

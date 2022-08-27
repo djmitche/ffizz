@@ -22,12 +22,10 @@ impl Parse for DocItem {
                 syn::UseTree::Name(name) => Ok(name.ident.to_string()),
                 syn::UseTree::Path(path) => use_ident(path.tree.as_ref()),
                 syn::UseTree::Rename(rename) => Ok(rename.rename.to_string()),
-                _ => {
-                    Err(Error::new_spanned(
-                        tree,
-                        "only single-item 'use' statements are supported",
-                    ))
-                }
+                _ => Err(Error::new_spanned(
+                    tree,
+                    "only single-item 'use' statements are supported",
+                )),
             }
         }
         let (name, attrs) = match &mut item {
@@ -56,7 +54,7 @@ impl Parse for DocItem {
 
 impl DocItem {
     /// Convert this DocItem into a TokenStream that will include it in the built binary.
-    pub(crate) fn to_tokens(self, tokens: &mut TokenStream2) {
+    pub(crate) fn to_tokens(&self, tokens: &mut TokenStream2) {
         self.syn_item.to_tokens(tokens);
         self.header_item.to_tokens(tokens);
     }

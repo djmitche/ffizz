@@ -25,7 +25,7 @@ impl Parse for Snippet {
 
 impl Snippet {
     /// Convert this DocItem into a TokenStream that will include it in the built binary.
-    pub(crate) fn to_tokens(self, tokens: &mut TokenStream2) {
+    pub(crate) fn to_tokens(&self, tokens: &mut TokenStream2) {
         self.header_item.to_tokens(tokens);
     }
 }
