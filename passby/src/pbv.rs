@@ -4,7 +4,7 @@
 /// trait is typically used to represent Copy values, and in particular values that
 /// do not contain pointers.
 ///
-/// The Rust and C types may differ, with [`PassByValue::from_ctype`] and [`PassByValue::as_ctype`]
+/// The Rust and C types may differ, with [`PassByValue::from_ctype`] and [`PassByValue::into_ctype`]
 /// converting between them.  These typically provide some simple conversion between a C-style
 /// data structure and a more ergonomic Rust type.
 pub trait PassByValue: Sized {
@@ -19,7 +19,7 @@ pub trait PassByValue: Sized {
     unsafe fn from_ctype(cval: Self::CType) -> Self;
 
     /// Convert a Rust value to a C value.
-    fn as_ctype(self) -> Self::CType;
+    fn into_ctype(self) -> Self::CType;
 
     /// Copy a value from C as an argument.
     ///
@@ -39,7 +39,7 @@ pub trait PassByValue: Sized {
     ///
     /// - if the value is allocated, the caller must ensure that the value is eventually freed
     unsafe fn return_val(self) -> Self::CType {
-        self.as_ctype()
+        self.into_ctype()
     }
 
     /// Return a value to C, via an "output parameter".
@@ -55,6 +55,6 @@ pub trait PassByValue: Sized {
         // SAFETY:
         //  - arg_out is not NULL (see docstring)
         //  - arg_out is properly aligned and points to valid memory (see docstring)
-        unsafe { *arg_out = self.as_ctype() };
+        unsafe { *arg_out = self.into_ctype() };
     }
 }

@@ -81,7 +81,7 @@ mod status {
             }
         }
 
-        fn as_ctype(self) -> hittr_status_t {
+        fn into_ctype(self) -> hittr_status_t {
             match self {
                 Status::Ready => hittr_status_t {
                     status: HITTR_STATUS_READY,

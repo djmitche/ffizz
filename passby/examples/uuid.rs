@@ -29,7 +29,7 @@ impl PassByValue for Uuid {
         Uuid(uuid::Uuid::from_bytes(cval.0))
     }
 
-    fn as_ctype(self) -> uuid_t {
+    fn into_ctype(self) -> uuid_t {
         uuid_t(*self.0.as_bytes())
     }
 }
