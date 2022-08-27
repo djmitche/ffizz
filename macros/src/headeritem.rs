@@ -155,8 +155,8 @@ impl HeaderItem {
             // /// - style
 
             // strip a single leading space, if it exists.
-            if s.starts_with(' ') {
-                vec![s[1..].to_string()]
+            if let Some(stripped) = s.strip_prefix(' ') {
+                vec![stripped.to_string()]
             } else {
                 vec![s]
             }
