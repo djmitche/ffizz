@@ -23,10 +23,10 @@ impl Parse for DocItem {
                 syn::UseTree::Path(path) => use_ident(path.tree.as_ref()),
                 syn::UseTree::Rename(rename) => Ok(rename.rename.to_string()),
                 _ => {
-                    return Err(Error::new_spanned(
+                    Err(Error::new_spanned(
                         tree,
                         "only single-item 'use' statements are supported",
-                    ));
+                    ))
                 }
             }
         }

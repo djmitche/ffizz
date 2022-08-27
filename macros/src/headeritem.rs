@@ -155,7 +155,7 @@ impl HeaderItem {
             // /// - style
 
             // strip a single leading space, if it exists.
-            if s.starts_with(" ") {
+            if s.starts_with(' ') {
                 vec![s[1..].to_string()]
             } else {
                 vec![s]
@@ -189,7 +189,7 @@ impl HeaderItem {
                 }
                 content.push(line);
             } else {
-                if strip_new_blank_comments && line == "" {
+                if strip_new_blank_comments && line.is_empty() {
                     continue;
                 }
                 if line.trim() == "```c" {
@@ -197,7 +197,7 @@ impl HeaderItem {
                     strip_trailing_blank_comments(&mut content);
                     continue;
                 }
-                if line.len() > 0 {
+                if !line.is_empty() {
                     content.push(format!("// {}", line));
                 } else {
                     content.push("//".to_string());
@@ -335,7 +335,7 @@ mod test {
 
     fn multiline(s: &'static str) -> String {
         // strip `/**` and `*/`.
-        return s[3..s.len() - 2].to_string();
+        s[3..s.len() - 2].to_string()
     }
 
     #[test]

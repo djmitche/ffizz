@@ -13,7 +13,7 @@ impl Parse for Snippet {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attrs = input.call(syn::Attribute::parse_outer)?;
         let header_item = HeaderItem::from_attrs(String::new(), &mut attrs)?;
-        if header_item.name.len() == 0 {
+        if header_item.name.is_empty() {
             return Err(Error::new(
                 Span::call_site(),
                 "snippet! requires a name (`#[ffizz(name=\"..\")]`)",

@@ -47,7 +47,7 @@ fn generate_from_vec(mut items: Vec<&'static HeaderItem>) -> String {
     // join the items with blank lines
     let mut result = join(items.iter().map(|hi| hi.content.trim()), "\n\n");
     // and ensure a trailing newline
-    if items.len() > 0 {
+    if !items.is_empty() {
         result.push('\n');
     }
     result
