@@ -31,14 +31,30 @@ pub trait OpaqueStruct: Sized {
     /// and its size must not be less than that of Self.
     type CType: Sized;
 
+    /// Get the value of this type used to represent a NULL pointer.
+    ///
+    /// For types that have a natural zero value, this can provide a shortcut for a C caller:
+    /// instead of initializing a struct with the zero value and apssing a pointer to it, the
+    /// caller can simply pass NULL.
+    ///
+    /// The default implementation panics.
+    fn null_value() -> Self {
+        panic!("NULL pointer is not allowed")
+    }
+
     /// Call the contained function with a shared reference to the data type.
     ///
     /// # Safety
-    ///
-    /// * cptr must not be NULL and must point to a valid (initialized) CType value
+    /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
+    /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
+    ///   CType value
     /// * no other thread may mutate the value pointed to by CType until with_ref returns.
     unsafe fn with_ref<T, F: Fn(&Self) -> T>(cptr: *const Self::CType, f: F) -> T {
         check_size_and_alignment::<Self::CType, Self>();
+        if cptr.is_null() {
+            return f(&Self::null_value());
+        }
+
         // SAFETY:
         // - casting to a pointer type with the same alignment and smaller size
         f(unsafe { &*(cptr as *const Self) })
@@ -48,10 +64,17 @@ pub trait OpaqueStruct: Sized {
     ///
     /// # Safety
     ///
-    /// * cptr must not be NULL and must point to a valid (initialized) CType value
+    /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
+    /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
+    ///   CType value
     /// * no other thread may access the value pointed to by CType until with_ref_mut returns.
     unsafe fn with_mut_ref<T, F: Fn(&mut Self) -> T>(cptr: *mut Self::CType, f: F) -> T {
         check_size_and_alignment::<Self::CType, Self>();
+        if cptr.is_null() {
+            let mut null = Self::null_value();
+            return f(&mut null);
+        }
+
         // SAFETY:
         // - casting to a pointer type with the same alignment and smaller size
         f(unsafe { &mut *(cptr as *mut Self) })
@@ -116,10 +139,16 @@ pub trait OpaqueStruct: Sized {
     ///
     /// # Safety
     ///
-    /// * cptr must not be NULL and must point to a valid (initialized) CType value
+    /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
+    /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
+    ///   CType value
     /// * the memory pointed to by cptr is uninitialized when this function returns
     unsafe fn take(cptr: *mut Self::CType) -> Self {
         check_size_and_alignment::<Self::CType, Self>();
+        if cptr.is_null() {
+            return Self::null_value();
+        }
+
         // convert cptr to a reference to Self
         // SAFETY:
         // - casting to a pointer type with the same alignment and smaller size
