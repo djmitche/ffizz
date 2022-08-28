@@ -68,7 +68,7 @@ pub trait OpaqueStruct: Sized {
     /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
     ///   CType value
     /// * no other thread may access the value pointed to by CType until with_ref_mut returns.
-    unsafe fn with_mut_ref<T, F: Fn(&mut Self) -> T>(cptr: *mut Self::CType, f: F) -> T {
+    unsafe fn with_ref_mut<T, F: Fn(&mut Self) -> T>(cptr: *mut Self::CType, f: F) -> T {
         check_size_and_alignment::<Self::CType, Self>();
         if cptr.is_null() {
             let mut null = Self::null_value();
@@ -230,7 +230,7 @@ mod test {
                     assert_eq!(rref.0, 10);
                 });
 
-                RType::with_mut_ref(cval.as_mut_ptr(), |rref| {
+                RType::with_ref_mut(cval.as_mut_ptr(), |rref| {
                     assert_eq!(rref.0, 10);
                     rref.0 = 20;
                 });

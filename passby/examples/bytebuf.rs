@@ -52,7 +52,7 @@ pub unsafe extern "C" fn byte_buffer_checksum(bb: *const byte_buffer_t) -> u8 {
 /// Add a byte to the byte buffer.
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_push(bb: *mut byte_buffer_t, b: u8) {
-    unsafe { ByteBuffer::with_mut_ref(bb, |bb| bb.0.push(b)) }
+    unsafe { ByteBuffer::with_ref_mut(bb, |bb| bb.0.push(b)) }
 }
 
 /// Combine two byte buffers, returning a new byte buffer containing the bytes
