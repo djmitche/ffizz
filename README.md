@@ -7,3 +7,4 @@ The ffizz libraries help by implementing some common patterns with clear safety 
 
 * [ffizz-passby](https://docs.rs/ffizz-passby) supports passing arguments and return values by pointer or by value.
 * [ffizz-header](https://docs.rs/ffizz-header) supports generating a C header corresponding to a library crate
+* [ffizz-string](https://docs.rs/ffizz-string) provides a simple string abstraction
