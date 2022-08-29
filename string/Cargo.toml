@@ -5,7 +5,7 @@ repository = "https://github.com/djmitche/ffizz"
 readme = "src/crate-doc.md"
 documentation = "https://docs.rs/ffizz-string"
 license = "MIT"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
