@@ -1,0 +1,8 @@
+[package]
+name = "xtask"
+version = "0.3.2" 
+edition = "2018"
+publish = false
+
+[dependencies]
+ffizz-tests-simplib = { path = "../tests/simplib" }
