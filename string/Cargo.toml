@@ -9,7 +9,7 @@ version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-ffizz-passby = { path = "../passby" }
+ffizz-passby = { version = "0.3.0", path = "../passby" }
 libc = "0.2.131"
 
 [dev-dependencies]

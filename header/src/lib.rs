@@ -1,3 +1,5 @@
+#![doc = include_str!("crate-doc.md")]
+
 use itertools::join;
 use linkme::distributed_slice;
 use std::cmp::Ordering;
