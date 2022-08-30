@@ -4,7 +4,7 @@ description = "FFI helper macros (typically not depended on directly)"
 repository = "https://github.com/djmitche/ffizz"
 documentation = "https://docs.rs/ffizz-macros"
 license = "MIT"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 
 [lib]

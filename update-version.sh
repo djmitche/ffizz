@@ -8,5 +8,5 @@ if [ -z "$VERSION" ]; then
 fi
 
 for f in */Cargo.toml; do
-    sed -i "s/version = \"[0-9.]*\"/version = \"${VERSION}\"/g" $f
+    sed -i '/^\(version\|ffizz-.* = {.*version = \)/s/version = "[0-9.]*"/version = "'${VERSION}'"/g' $f
 done
