@@ -1,8 +1,11 @@
 [package]
 name = "ffizz-tests-simplib"
-description = "Simple library only using the ffizz-header functionality"
+description = "Simple library demonstrating ffizz-header"
 version = "0.1.0"
 publish = false
+
+[lib]
+crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 ffizz-header = { path = "../../header" }

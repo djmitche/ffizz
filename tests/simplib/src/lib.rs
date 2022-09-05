@@ -1,62 +1,29 @@
-#[ffizz_header::item]
-#[ffizz(name = "subtract")]
-/// This is my function
-/// Another line
-///
-/// ```c
-/// usize add(usize left, usize right);
-/// ```
-#[no_mangle]
-pub unsafe extern "C" fn add(left: usize, right: usize) -> usize {
-    left + right
+ffizz_header::snippet! {
+#[ffizz(name="top", order=0)]
+/// SimpLib -- addition, simplified.
 }
 
 ffizz_header::snippet! {
-#[ffizz(name="foo")]
-#[ffizz(order=0)]
-/// LIBRARY OVERVIEW
+#[ffizz(name="includes", order=1)]
+/// ```c
+/// #include <stdint.h>
+/// ```
 }
 
 #[ffizz_header::item]
-/**
- * X is cool
- * ```c
- * typedef usize X;
- * ```
- */
-#[allow(dead_code)]
-type X = usize;
-
-pub fn generate_header() -> String {
-    ffizz_header::generate()
+/// Add two numbers and return the result.  Overflow will be handled with
+/// a panic.
+///
+/// ```c
+/// uint64_t add(uint64_t left, uint64_t right);
+/// ```
+#[no_mangle]
+pub unsafe extern "C" fn add(left: u64, right: u64) -> u64 {
+    left + right
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = unsafe { add(2, 2) };
-        assert_eq!(result, 4);
-    }
-
-    #[test]
-    fn test_header() {
-        println!("{}", super::generate_header());
-        assert_eq!(
-            super::generate_header(),
-            String::from(
-                "// LIBRARY OVERVIEW
-
-// X is cool
-typedef usize X;
-
-// This is my function
-// Another line
-usize add(usize left, usize right);
-"
-            )
-        );
-    }
+#[cfg(debug_assertions)] // only include this in debug builds
+/// Generate the header
+pub fn generate_header() -> String {
+    ffizz_header::generate()
 }

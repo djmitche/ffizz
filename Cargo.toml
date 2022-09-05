@@ -6,4 +6,5 @@ members = [
     "passby",
     "string",
     "tests/simplib",
+    "xtask",
 ]
