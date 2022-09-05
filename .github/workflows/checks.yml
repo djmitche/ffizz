@@ -62,3 +62,35 @@ jobs:
           command: fmt
           args: --all -- --check
 
+
+  codegen:
+    runs-on: ubuntu-latest
+    name: "Code Generation"
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: rustfmt
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: xtask
+          args: codegen
+
+      - name: compare
+        run: |
+          if ! git diff --quiet; then
+            (
+              echo 'Running `cargo xtask codegen` produced changes that should be checked in:'
+              echo '```diff'
+              git diff 
+              echo '```'
+            ) >> $GITHUB_STEP_SUMMARY
+            echo 'Running `cargo xtask codegen` produced changes that should be checked in'
+            git diff 
+            exit 1
+          fi
