@@ -5,13 +5,13 @@ repository = "https://github.com/djmitche/ffizz"
 readme = "src/crate-doc.md"
 documentation = "https://docs.rs/ffizz-header"
 license = "MIT"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 
 [dependencies]
 linkme = "0.3.3"
 itertools = "0.10"
-ffizz-macros = { version = "0.3.3", path = "../macros" }
+ffizz-macros = { version = "0.3.4", path = "../macros" }
 
 [package.metadata.docs.rs]
-cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]

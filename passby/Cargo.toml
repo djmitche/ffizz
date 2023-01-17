@@ -5,7 +5,7 @@ repository = "https://github.com/djmitche/ffizz"
 readme = "src/crate-doc.md"
 documentation = "https://docs.rs/ffizz-passby"
 license = "MIT"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 
 [dependencies]
@@ -15,4 +15,4 @@ uuid = { version = "^1.1.2", features = ["v4"] }
 libc = "0.2.129"
 
 [package.metadata.docs.rs]
-cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
