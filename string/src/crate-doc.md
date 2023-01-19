@@ -3,14 +3,37 @@ It provides a way to pass strings into Rust functions and to return strings to C
 
 ## Usage
 
+### Stirng Type
+
 Expose the C type `fz_string_t` in your C header as a struct with the same structure as that in the [`fz_string_t`] docstring.
 This is large enough to hold the [`FzString`] type, and ensures the C compiler will properly align the value.
 
 You may call the type whatever you like.
-Type names are erased in the C ABI, so it's fine to write a Rust declaration using `fz_string_t` and equivalent C declaration using `your_name_here_t`.
+Type names are erased in the C ABI, so it's fine to write a Rust declaration using `fz_string_t` and equivalent C declaration using `mystrtype_t`.
 You may also rename the Rust type with `use ffizz_string::fz_string_t as ..`, if you prefer.
 
-### As an Argument
+### String Utility Functions
+
+This crate includes a number of utility functions, named `fz_string_..`.
+These can be re-exported to C using whatever names you prefer, and with docstrings based on those in this crate, including C declarations:
+
+```ignore
+#[ffizz_header::item]
+#[ffizz(order = 110)]
+/// Free a mystrtype_t.
+///
+/// # Safety
+///
+/// The string must not be used after this function returns, and must not be freed more than once.
+/// It is safe to free Null-variant strings.
+///
+/// '''c
+/// mystrtype_free(mystrtype_t *);
+/// '''    <-- Markdown does not like nested backticks -- sorry!
+pub use ffizz_string::fz_string_free as mystrtype_free;
+```
+
+### Strings as Function Arguments
 
 Define your `extern "C"` function to take a `*mut fz_string_t` argument:
 
@@ -36,7 +59,7 @@ unsafe {
 }
 ```
 
-### As a Return Value
+### Strings as Return Values
 
 To return a string, define your `extern "C"` function to return an `fz_string_t`:
 ```ignore
@@ -54,7 +77,7 @@ unsafe {
 
 ## Example
 
-See the `kv` example in this crate for a worked example of a simple library using `ffizz_string`.
+See [the `kv` example](https://github.com/djmitche/ffizz/blob/main/string/examples/kv.rs) in this crate for a worked example of a simple library using `ffizz_string`.
 
 ## Performance
 

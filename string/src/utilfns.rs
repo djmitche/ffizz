@@ -28,7 +28,7 @@ pub unsafe extern "C" fn fz_string_borrow(cstr: *const c_char) -> fz_string_t {
 }
 
 #[allow(clippy::missing_safety_doc)] // not actually terribly unsafe
-/// Create a new, null fz_string_t.  Note that this is _not_ the zero value of fz_string_t.
+/// Create a new, null `fz_string_t`.  Note that this is _not_ the zero value of `fz_string_t`.
 ///
 /// ```c
 /// fz_string_t fz_string_null();
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn fz_string_null() -> fz_string_t {
     unsafe { FzString::return_val(FzString::Null) }
 }
 
-/// Create a new fz_string_t by cloning the content of the given C string.  The resulting fz_string_t
+/// Create a new `fz_string_t` by cloning the content of the given C string.  The resulting `fz_string_t`
 /// is independent of the given string.
 ///
 /// # Safety
@@ -65,9 +65,9 @@ pub unsafe extern "C" fn fz_string_clone(cstr: *const c_char) -> fz_string_t {
     unsafe { FzString::return_val(FzString::CString(cstring)) }
 }
 
-/// Create a new fz_string_t containing the given string with the given length. This allows creation
+/// Create a new `fz_string_t` containing the given string with the given length. This allows creation
 /// of strings containing embedded NUL characters.  As with `fz_string_clone`, the resulting
-/// fz_string_t is independent of the passed buffer.
+/// `fz_string_t` is independent of the passed buffer.
 ///
 /// The given length should _not_ include any NUL terminator.  The given length must be less than
 /// half the maximum value of usize.
@@ -106,12 +106,12 @@ pub unsafe extern "C" fn fz_string_clone_with_len(buf: *const c_char, len: usize
 ///
 /// The Null variant also results in a NULL return value.
 ///
-/// This function takes the fz_string_t by pointer because it may be modified in-place to add a NUL
+/// This function takes the `fz_string_t` by pointer because it may be modified in-place to add a NUL
 /// terminator.  The pointer must not be NULL.
 ///
 /// # Safety
 ///
-/// The returned string is "borrowed" and remains valid only until the fz_string_t is freed or
+/// The returned string is "borrowed" and remains valid only until the `fz_string_t` is freed or
 /// passed to any other API function.
 #[no_mangle]
 pub unsafe extern "C" fn fz_string_content(fzs: *mut fz_string_t) -> *const c_char {
@@ -133,11 +133,11 @@ pub unsafe extern "C" fn fz_string_content(fzs: *mut fz_string_t) -> *const c_ch
 /// Get the content of the string as a pointer and length.
 ///
 /// This function can return any string, even one including NUL bytes or invalid UTF-8.
-/// If the FzString is the Null variant, this returns NULl and the length is set to zero.
+/// If the FzString is the Null variant, this returns NULL and the length is set to zero.
 ///
 /// # Safety
 ///
-/// The returned string is "borrowed" and remains valid only until the fz_string_t is freed or
+/// The returned string is "borrowed" and remains valid only until the `fz_string_t` is freed or
 /// passed to any other API function.
 ///
 /// ```c
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn fz_string_content_with_len(
 }
 
 #[allow(clippy::missing_safety_doc)] // NULL pointer is OK so not actually unsafe
-/// Determine whether the given fz_string_t is a Null variant.
+/// Determine whether the given `fz_string_t` is a Null variant.
 ///
 /// ```c
 /// bool fz_string_is_null(fz_string_t *);
@@ -191,7 +191,7 @@ pub unsafe extern "C" fn fz_string_is_null(fzs: *const fz_string_t) -> bool {
     unsafe { FzString::with_ref(fzs, |fzs| fzs.is_null()) }
 }
 
-/// Free a fz_string_t.
+/// Free a `fz_string_t`.
 ///
 /// # Safety
 ///

@@ -256,12 +256,12 @@ ffizz_header::snippet! {
 
 #[ffizz_header::item]
 #[ffizz(order = 110)]
-/// Create a new kvstore_string_t by cloning the content of the given C string.
+/// Create a new `kvstore_string_t` by cloning the content of the given C string.  The resulting `fz_string_t`
+/// is independent of the given string.
 ///
 /// # Safety
 ///
-/// The C string must remain valid and unchanged until after the fz_string_t is freed.  It's
-/// typically easiest to ensure this by using a static string.
+/// The given pointer must not be NULL.
 ///
 /// ```c
 /// kvstore_string_t kvstore_string_clone(const char *);
