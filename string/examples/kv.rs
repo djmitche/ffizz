@@ -247,8 +247,8 @@ ffizz_header::snippet! {
 ///
 /// ```c
 /// typedef struct kvstore_string_t {
-///     uint64_t __reserved[4]
-/// }
+///     uint64_t __reserved[4];
+/// };
 /// ```
 }
 
