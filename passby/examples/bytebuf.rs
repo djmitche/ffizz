@@ -34,7 +34,7 @@ pub unsafe extern "C" fn byte_buffer_init(bb: *mut byte_buffer_t) {
 /// Free a byte_buffer_t.
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_free(bb: *mut byte_buffer_t) {
-    let bb = unsafe { ByteBuffer::take(bb) };
+    let bb = unsafe { ByteBuffer::take_ptr(bb) };
     drop(bb); // just to be explicit
 }
 
@@ -63,8 +63,8 @@ pub unsafe extern "C" fn byte_buffer_combine(
     bb1: *mut byte_buffer_t,
     bb2: *mut byte_buffer_t,
 ) -> byte_buffer_t {
-    let mut bb1 = unsafe { ByteBuffer::take(bb1) };
-    let bb2 = unsafe { ByteBuffer::take(bb2) };
+    let mut bb1 = unsafe { ByteBuffer::take_ptr(bb1) };
+    let bb2 = unsafe { ByteBuffer::take_ptr(bb2) };
 
     // modify bb1 in place (but it's not in the caller's location anymore)
     bb1.0.extend(&bb2.0[..]);

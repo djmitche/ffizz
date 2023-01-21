@@ -177,7 +177,7 @@ pub unsafe extern "C" fn kvstore_set(
     //  - key/val are valid kvstore_string_t's (see docstring)
     //  - key/val are not accessed concurrently (type docstring)
     //  - key/val are not uesd after function returns (see docstring)
-    let (key, val) = unsafe { (FzString::take(key), FzString::take(val)) };
+    let (key, val) = unsafe { (FzString::take_ptr(key), FzString::take_ptr(val)) };
 
     if let Ok(Some(key)) = key.into_string() {
         if let Ok(Some(val)) = val.into_string() {
