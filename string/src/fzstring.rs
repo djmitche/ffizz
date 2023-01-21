@@ -1,6 +1,7 @@
 use crate::{EmbeddedNulError, InvalidUTF8Error};
 use ffizz_passby::OpaqueStruct;
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr, CString, OsString};
+use std::path::PathBuf;
 
 /// A FzString carries a single string between Rust and C code, represented from the C side as
 /// an opaque struct.
@@ -154,6 +155,31 @@ impl<'a> FzString<'a> {
             FzString::Bytes(_) => unreachable!(), // handled above
             FzString::Null => None,
         })
+    }
+
+    /// Consume this FzString and return an equivalent PathBuf.
+    ///
+    /// As with `as_str`, the FzString is converted in-place, and this conversion can fail.  In the
+    /// failure case, the original data is lost.
+    ///
+    /// The Null varaiant is represented as None.
+    pub fn into_path_buf(self) -> Result<Option<PathBuf>, std::str::Utf8Error> {
+        #[cfg(unix)]
+        let path: Option<OsString> = {
+            // on UNIX, we can use the bytes directly, without requiring that they
+            // be valid UTF-8.
+            use std::ffi::OsStr;
+            use std::os::unix::ffi::OsStrExt;
+            self.as_bytes()
+                .map(|bytes| OsStr::from_bytes(bytes).to_os_string())
+        };
+        #[cfg(windows)]
+        let path: Option<OsString> = {
+            // on Windows, we assume the filename is valid Unicode, so it can be
+            // represented as UTF-8.
+            self.into_string()?.map(|s| OsString::from(s))
+        };
+        Ok(path.map(|p| p.into()))
     }
 
     /// Get the slice of bytes representing the content of this value, not including any NUL
@@ -494,6 +520,69 @@ mod test {
     #[test]
     fn into_string_null() {
         assert_eq!(make_null().into_string().unwrap(), None);
+    }
+
+    // into_path_buf
+
+    #[test]
+    fn into_path_buf_cstring() {
+        assert_eq!(
+            make_cstring().into_path_buf().unwrap(),
+            Some(PathBuf::from("a string"))
+        );
+    }
+
+    #[test]
+    fn into_path_buf_cstr() {
+        assert_eq!(
+            make_cstr().into_path_buf().unwrap(),
+            Some(PathBuf::from("a string"))
+        );
+    }
+
+    #[test]
+    fn into_path_buf_string() {
+        assert_eq!(
+            make_string().into_path_buf().unwrap(),
+            Some(PathBuf::from("a string"))
+        );
+    }
+
+    #[test]
+    fn into_path_buf_string_with_nul() {
+        assert_eq!(
+            make_string_with_nul().into_path_buf().unwrap(),
+            Some(PathBuf::from("a \0 nul!"))
+        )
+    }
+
+    #[test]
+    fn into_path_buf_invalid_bytes() {
+        #[cfg(windows)] // windows filenames are unicode
+        assert!(make_invalid_bytes().into_path_buf().is_err());
+        #[cfg(unix)] // UNIX doesn't care
+        assert!(make_invalid_bytes().into_path_buf().is_ok());
+    }
+
+    #[test]
+    fn into_path_buf_nul_bytes() {
+        assert_eq!(
+            make_nul_bytes().into_path_buf().unwrap(),
+            Some(PathBuf::from("abc\0123"))
+        );
+    }
+
+    #[test]
+    fn into_path_buf_valid_bytes() {
+        assert_eq!(
+            make_bytes().into_path_buf().unwrap(),
+            Some(PathBuf::from("bytes"))
+        );
+    }
+
+    #[test]
+    fn into_path_buf_null() {
+        assert_eq!(make_null().into_path_buf().unwrap(), None);
     }
 
     // as_bytes
