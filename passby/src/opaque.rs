@@ -34,7 +34,7 @@ pub trait OpaqueStruct: Sized {
     /// Get the value of this type used to represent a NULL pointer.
     ///
     /// For types that have a natural zero value, this can provide a shortcut for a C caller:
-    /// instead of initializing a struct with the zero value and apssing a pointer to it, the
+    /// instead of initializing a struct with the zero value and passing a pointer to it, the
     /// caller can simply pass NULL.
     ///
     /// The default implementation panics.
