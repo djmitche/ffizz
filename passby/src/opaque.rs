@@ -11,7 +11,7 @@ use std::mem;
 /// required for a Rust value, but it is possible to make a conservative guess, possibly leaving
 /// some unused space.  The suggested C type is `struct CType([u64; N])` for some N large enough to
 /// contain the Rust type on the required platforms.  In C, this type would be defined as `struct
-/// ctype_t { _reserved uint64_t[N] }` for the same N.  The types must also have the same alignment.
+/// ctype_t { _reserved uint64_t[N]; }` for the same N.  The types must also have the same alignment.
 ///
 /// This type contains debug assertions regarding the size of the Rust and C types, and will fail
 /// at runtime if the alignment or size of the two types is not as required.
@@ -34,7 +34,7 @@ pub trait OpaqueStruct: Sized {
     /// Get the value of this type used to represent a NULL pointer.
     ///
     /// For types that have a natural zero value, this can provide a shortcut for a C caller:
-    /// instead of initializing a struct with the zero value and apssing a pointer to it, the
+    /// instead of initializing a struct with the zero value and passing a pointer to it, the
     /// caller can simply pass NULL.
     ///
     /// The default implementation panics.

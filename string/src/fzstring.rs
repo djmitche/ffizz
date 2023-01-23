@@ -53,8 +53,8 @@ pub enum FzString<'a> {
 ///
 /// ```c
 /// typedef struct fz_string_t {
-///     uint64_t __reserved[4]
-/// }
+///     uint64_t __reserved[4];
+/// };
 /// ```
 #[repr(C)]
 pub struct fz_string_t {
