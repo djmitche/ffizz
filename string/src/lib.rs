@@ -5,8 +5,10 @@
 
 mod error;
 mod fzstring;
+mod macros;
 mod utilfns;
 
 pub use error::*;
 pub use fzstring::{fz_string_t, FzString};
+pub use macros::*;
 pub use utilfns::*;

@@ -1,19 +1,31 @@
 use crate::{fz_string_t, FzString};
-use libc::c_char;
 use std::ffi::{CStr, CString};
+
+// These functions are used in downstream creates via the `reexport!` macro, which generates a
+// function in that crate, wrapping one of these functions.  As a result, none of these functions
+// are `extern "C"`, and all are tagged with `inline(always)` so that they are inlined into the
+// downstream crate.
+//
+// NOTE: if you add a function to this module, also add it to `reexport!` in string/src/macros.rs.
+
+// This type is used in the `reexport!` macro.
+#[doc(hidden)]
+pub type c_char = libc::c_char;
 
 /// Create a new fz_string_t containing a pointer to the given C string.
 ///
 /// # Safety
 ///
-/// The C string must remain valid and unchanged until after the fz_string_t is freed.  It's
+/// The C string must remain valid and unchanged until after the `fz_string_t` is freed.  It's
 /// typically easiest to ensure this by using a static string.
+///
+/// The resulting `fz_string_t` must be freed.
 ///
 /// ```c
 /// fz_string_t fz_string_borrow(const char *);
 /// ```
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_borrow(cstr: *const c_char) -> fz_string_t {
+#[inline(always)]
+pub unsafe fn fz_string_borrow(cstr: *const c_char) -> fz_string_t {
     debug_assert!(!cstr.is_null());
     // SAFETY:
     //  - cstr is not NULL (promised by caller, verified by assertion)
@@ -29,11 +41,15 @@ pub unsafe extern "C" fn fz_string_borrow(cstr: *const c_char) -> fz_string_t {
 #[allow(clippy::missing_safety_doc)] // not actually terribly unsafe
 /// Create a new, null `fz_string_t`.  Note that this is _not_ the zero value of `fz_string_t`.
 ///
+/// # Safety
+///
+/// The resulting `fz_string_t` must be freed.
+///
 /// ```c
-/// fz_string_t fz_string_null();
+/// `fz_string_t` fz_string_null();
 /// ```
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_null() -> fz_string_t {
+#[inline(always)]
+pub unsafe fn fz_string_null() -> fz_string_t {
     // SAFETY:
     //  - caller promises to free this string
     unsafe { FzString::return_val(FzString::Null) }
@@ -45,12 +61,13 @@ pub unsafe extern "C" fn fz_string_null() -> fz_string_t {
 /// # Safety
 ///
 /// The given pointer must not be NULL.
+/// The resulting `fz_string_t` must be freed.
 ///
 /// ```c
 /// fz_string_t fz_string_clone(const char *);
 /// ```
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_clone(cstr: *const c_char) -> fz_string_t {
+#[inline(always)]
+pub unsafe fn fz_string_clone(cstr: *const c_char) -> fz_string_t {
     debug_assert!(!cstr.is_null());
     // SAFETY:
     //  - cstr is not NULL (promised by caller, verified by assertion)
@@ -74,12 +91,13 @@ pub unsafe extern "C" fn fz_string_clone(cstr: *const c_char) -> fz_string_t {
 /// # Safety
 ///
 /// The given pointer must not be NULL.
+/// The resulting `fz_string_t` must be freed.
 ///
 /// ```c
 /// fz_string_t fz_string_clone_with_len(const char *ptr, usize len);
 /// ```
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_clone_with_len(buf: *const c_char, len: usize) -> fz_string_t {
+#[inline(always)]
+pub unsafe fn fz_string_clone_with_len(buf: *const c_char, len: usize) -> fz_string_t {
     debug_assert!(!buf.is_null());
     debug_assert!(len < isize::MAX as usize);
     // SAFETY:
@@ -112,14 +130,18 @@ pub unsafe extern "C" fn fz_string_clone_with_len(buf: *const c_char, len: usize
 ///
 /// The returned string is "borrowed" and remains valid only until the `fz_string_t` is freed or
 /// passed to any other API function.
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_content(fzs: *mut fz_string_t) -> *const c_char {
+///
+/// ```c
+/// const char *fz_string_content(fz_string_t *);
+/// ```
+#[inline(always)]
+pub unsafe fn fz_string_content(fzstr: *mut fz_string_t) -> *const c_char {
     // SAFETY;
-    //  - fzs is not NULL (promised by caller, verified)
-    //  - *fzs is valid (promised by caller)
-    //  - *fzs is not accessed concurrently (single-threaded)
+    //  - fzstr is not NULL (promised by caller, verified)
+    //  - *fzstr is valid (promised by caller)
+    //  - *fzstr is not accessed concurrently (single-threaded)
     unsafe {
-        FzString::with_ref_mut(fzs, |fzs| match fzs.as_cstr() {
+        FzString::with_ref_mut(fzstr, |fzstr| match fzstr.as_cstr() {
             // SAFETY:
             //  - implied lifetime here is FzString's lifetime; valid until another mutable
             //    reference is made (see docstring)
@@ -142,18 +164,18 @@ pub unsafe extern "C" fn fz_string_content(fzs: *mut fz_string_t) -> *const c_ch
 /// ```c
 /// const char *fz_string_content_with_len(fz_string_t *, len_out *usize);
 /// ```
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_content_with_len(
-    fzs: *mut fz_string_t,
+#[inline(always)]
+pub unsafe fn fz_string_content_with_len(
+    fzstr: *mut fz_string_t,
     len_out: *mut usize,
 ) -> *const c_char {
     // SAFETY;
-    //  - fzs is not NULL (promised by caller)
-    //  - *fzs is valid (promised by caller)
-    //  - *fzs is not accessed concurrently (single-threaded)
+    //  - fzstr is not NULL (promised by caller)
+    //  - *fzstr is valid (promised by caller)
+    //  - *fzstr is not accessed concurrently (single-threaded)
     unsafe {
-        FzString::with_ref_mut(fzs, |fzs| {
-            let bytes = match fzs.as_bytes() {
+        FzString::with_ref_mut(fzstr, |fzstr| {
+            let bytes = match fzstr.as_bytes() {
                 Some(bytes) => bytes,
                 None => {
                     // SAFETY:
@@ -185,9 +207,9 @@ pub unsafe extern "C" fn fz_string_content_with_len(
 /// ```c
 /// bool fz_string_is_null(fz_string_t *);
 /// ```
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_is_null(fzs: *const fz_string_t) -> bool {
-    unsafe { FzString::with_ref(fzs, |fzs| fzs.is_null()) }
+#[inline(always)]
+pub unsafe fn fz_string_is_null(fzstr: *const fz_string_t) -> bool {
+    unsafe { FzString::with_ref(fzstr, |fzstr| fzstr.is_null()) }
 }
 
 /// Free a `fz_string_t`.
@@ -200,12 +222,12 @@ pub unsafe extern "C" fn fz_string_is_null(fzs: *const fz_string_t) -> bool {
 /// ```c
 /// fz_string_free(fz_string_t *);
 /// ```
-#[no_mangle]
-pub unsafe extern "C" fn fz_string_free(fzs: *mut fz_string_t) {
+#[inline(always)]
+pub unsafe fn fz_string_free(fzstr: *mut fz_string_t) {
     // SAFETY:
-    //  - fzs is not NULL (promised by caller)
+    //  - fzstr is not NULL (promised by caller)
     //  - caller will not use this value after return
-    drop(unsafe { FzString::take_ptr(fzs) });
+    drop(unsafe { FzString::take_ptr(fzstr) });
 }
 
 #[cfg(test)]
@@ -219,15 +241,15 @@ mod test {
         let s = CString::new("hello!").unwrap();
         let ptr = unsafe { s.as_ptr() };
 
-        let mut fzs = unsafe { fz_string_borrow(ptr) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_borrow(ptr) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
-        let content = unsafe { CStr::from_ptr(fz_string_content(&mut fzs as *mut fz_string_t)) };
+        let content = unsafe { CStr::from_ptr(fz_string_content(&mut fzstr as *mut fz_string_t)) };
         assert_eq!(content.to_str().unwrap(), "hello!");
 
         drop(s); // make sure s lasts long enough!
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
@@ -235,19 +257,19 @@ mod test {
         let s = CString::new(INVALID_UTF8).unwrap();
         let ptr = unsafe { s.as_ptr() };
 
-        let mut fzs = unsafe { fz_string_borrow(ptr) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_borrow(ptr) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
         let mut len: usize = 0;
         let ptr = unsafe {
-            fz_string_content_with_len(&mut fzs as *mut fz_string_t, &mut len as *mut usize)
+            fz_string_content_with_len(&mut fzstr as *mut fz_string_t, &mut len as *mut usize)
         };
         let slice = unsafe { std::slice::from_raw_parts(ptr as *const u8, len) };
         assert_eq!(slice, INVALID_UTF8);
 
         drop(s); // make sure s lasts long enough!
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
@@ -255,31 +277,31 @@ mod test {
         let s = CString::new("hello!").unwrap();
         let ptr = unsafe { s.as_ptr() };
 
-        let mut fzs = unsafe { fz_string_clone(ptr) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_clone(ptr) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
-        drop(s); // fzs contains a clone of s, so deallocate
+        drop(s); // fzstr contains a clone of s, so deallocate
 
-        let content = unsafe { CStr::from_ptr(fz_string_content(&mut fzs as *mut fz_string_t)) };
+        let content = unsafe { CStr::from_ptr(fz_string_content(&mut fzstr as *mut fz_string_t)) };
         assert_eq!(content.to_str().unwrap(), "hello!");
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
     fn null_and_is_null() {
-        let mut fzs = unsafe { fz_string_null() };
-        assert!(unsafe { fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_null() };
+        assert!(unsafe { fz_string_is_null(&fzstr as *const fz_string_t) });
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
     fn null_ptr_is_null() {
-        let mut fzs = unsafe { fz_string_null() };
+        let mut fzstr = unsafe { fz_string_null() };
         assert!(unsafe { fz_string_is_null(std::ptr::null()) });
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
@@ -287,19 +309,19 @@ mod test {
         let s = CString::new(INVALID_UTF8).unwrap();
         let ptr = unsafe { s.as_ptr() };
 
-        let mut fzs = unsafe { fz_string_clone(ptr) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_clone(ptr) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
-        drop(s); // fzs contains a clone of s, so deallocate
+        drop(s); // fzstr contains a clone of s, so deallocate
 
         let mut len: usize = 0;
         let ptr = unsafe {
-            fz_string_content_with_len(&mut fzs as *mut fz_string_t, &mut len as *mut usize)
+            fz_string_content_with_len(&mut fzstr as *mut fz_string_t, &mut len as *mut usize)
         };
         let slice = unsafe { std::slice::from_raw_parts(ptr as *const u8, len) };
         assert_eq!(slice, INVALID_UTF8);
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
@@ -307,15 +329,15 @@ mod test {
         let s = CString::new("ABCDEFGH").unwrap();
         let ptr = unsafe { s.as_ptr() };
 
-        let mut fzs = unsafe { fz_string_clone_with_len(ptr, 4) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_clone_with_len(ptr, 4) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
-        drop(s); // fzs contains a clone of s, so deallocate
+        drop(s); // fzstr contains a clone of s, so deallocate
 
-        let content = unsafe { CStr::from_ptr(fz_string_content(&mut fzs as *mut fz_string_t)) };
+        let content = unsafe { CStr::from_ptr(fz_string_content(&mut fzstr as *mut fz_string_t)) };
         assert_eq!(content.to_str().unwrap(), "ABCD"); // only 4 bytes
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
@@ -323,19 +345,19 @@ mod test {
         let s = CString::new(INVALID_UTF8).unwrap();
         let ptr = unsafe { s.as_ptr() };
 
-        let mut fzs = unsafe { fz_string_clone_with_len(ptr, 4) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_clone_with_len(ptr, 4) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
-        drop(s); // fzs contains a clone of s, so deallocate
+        drop(s); // fzstr contains a clone of s, so deallocate
 
         let mut len: usize = 0;
         let ptr = unsafe {
-            fz_string_content_with_len(&mut fzs as *mut fz_string_t, &mut len as *mut usize)
+            fz_string_content_with_len(&mut fzstr as *mut fz_string_t, &mut len as *mut usize)
         };
         let slice = unsafe { std::slice::from_raw_parts(ptr as *const u8, len) };
         assert_eq!(slice, &INVALID_UTF8[..4]); // only 4 bytes
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     // (fz_string_content's normal operation is tested above)
@@ -345,15 +367,15 @@ mod test {
         let s = String::from("hello \0 NUL byte");
         let ptr = unsafe { s.as_ptr() } as *mut c_char;
 
-        let mut fzs = unsafe { fz_string_clone_with_len(ptr, s.len()) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_clone_with_len(ptr, s.len()) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
-        let ptr = unsafe { fz_string_content(&mut fzs as *mut fz_string_t) };
+        let ptr = unsafe { fz_string_content(&mut fzstr as *mut fz_string_t) };
 
         // could not return a string because of the embedded NUL byte
         assert!(ptr.is_null());
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]
@@ -367,19 +389,19 @@ mod test {
         let s = String::from("hello \0 NUL byte");
         let ptr = unsafe { s.as_ptr() } as *mut c_char;
 
-        let mut fzs = unsafe { fz_string_clone_with_len(ptr, s.len()) };
-        assert!(unsafe { !fz_string_is_null(&fzs as *const fz_string_t) });
+        let mut fzstr = unsafe { fz_string_clone_with_len(ptr, s.len()) };
+        assert!(unsafe { !fz_string_is_null(&fzstr as *const fz_string_t) });
 
         let mut len: usize = 0;
         let ptr = unsafe {
-            fz_string_content_with_len(&mut fzs as *mut fz_string_t, &mut len as *mut usize)
+            fz_string_content_with_len(&mut fzstr as *mut fz_string_t, &mut len as *mut usize)
         };
 
         let slice = unsafe { std::slice::from_raw_parts(ptr as *const u8, len) };
         let s = std::str::from_utf8(slice).unwrap();
         assert_eq!(s, "hello \0 NUL byte");
 
-        unsafe { fz_string_free(&mut fzs as *mut fz_string_t) };
+        unsafe { fz_string_free(&mut fzstr as *mut fz_string_t) };
     }
 
     #[test]

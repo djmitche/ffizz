@@ -20,10 +20,9 @@ You may also rename the Rust type with `use ffizz_string::fz_string_t as ..`, if
 This crate includes a number of utility functions, named `fz_string_..`.
 These can be re-exported to C using whatever names you prefer, and with docstrings based on those in this crate, including C declarations:
 
-<!-- NOTE: this does not work - see https://github.com/djmitche/ffizz/issues/13 -->
 ```ignore
-#[ffizz_header::item]
-#[ffizz(order = 110)]
+ffizz_snippet!{
+#[ffizz(name="mystrtype_free")]
 /// Free a mystrtype_t.
 ///
 /// # Safety
@@ -31,10 +30,11 @@ These can be re-exported to C using whatever names you prefer, and with docstrin
 /// The string must not be used after this function returns, and must not be freed more than once.
 /// It is safe to free Null-variant strings.
 ///
-/// '''c
-/// mystrtype_free(mystrtype_t *);
-/// '''    <-- Markdown does not like nested backticks -- sorry!
-pub use ffizz_string::fz_string_free as mystrtype_free;
+/// ```c
+/// EXTERN_C void mystrtype_free(mystrtype_t *);
+/// ```
+}
+ffizz_string::reexport!(fz_string_free as mystrtype_free);
 ```
 
 ### Strings as Function Arguments
