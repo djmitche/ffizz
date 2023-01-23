@@ -206,7 +206,7 @@ pub unsafe extern "C" fn fz_string_free(fzs: *mut fz_string_t) {
     // SAFETY:
     //  - fzs is not NULL (promised by caller)
     //  - caller will not use this value after return
-    drop(unsafe { FzString::take(fzs) });
+    drop(unsafe { FzString::take_ptr(fzs) });
 }
 
 #[cfg(test)]

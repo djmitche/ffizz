@@ -130,33 +130,67 @@ pub trait OpaqueStruct: Sized {
 
     /// Take a CType and return an owned value.
     ///
-    /// This method is used for "xxx_free" functions, which simply drop the resulting owned value.
+    /// This method is intended for C API functions that take the value by value and are
+    /// documented as taking ownership of the value.  However, this means that C retains
+    /// an expired "copy" of the value and could lead to use-after-free errors.  An
+    /// alternative is for the C API function to take the value by pointer and use
+    /// `take_ptr`, which invalidates the source value.
     ///
-    /// It is also used for functions which are documented in the C API as consuming the given value,
-    /// saving the caller the trouble of separately freeing the value.
+    /// # Safety
     ///
-    /// The memory pointed to by cptr is zeroed to prevent accidental re-use.
+    /// * cval must be a valid CType value
+    unsafe fn take(cval: Self::CType) -> Self {
+        check_size_and_alignment::<Self::CType, Self>();
+
+        // SAFETY:
+        //  - cval is a valid instance of CType, so its bytes interpreted as Self are valid
+        //  (see docstring)
+        //  - CType is larger than Self (guaranteed by check_size_and_alignment)
+        let rval = unsafe { mem::transmute_copy(&cval) };
+        // cval is still a valid value, but its bits have been copied, so indicate to Rust that it
+        // is no longer needed and its Drop should not run.  In typical usage CType does not have a
+        // Drop implementation anyway.
+        mem::forget(cval);
+        rval
+    }
+
+    /// Take a pointer to a CType and return an owned value.
+    ///
+    /// This is intended for C API functions that take a value by reference (pointer), but still
+    /// "take ownership" of the value.  It leaves behind an invalid value, where any non-padding
+    /// bytes of the Rust type are zeroed.  This makes use-after-free errors in the C code more
+    /// likely to crash instead of silently working.  Which is about as good as it gets in C.
+    ///
+    /// Do _not_ pass a pointer to a Rust value to this function:
+    ///
+    /// ```ignore
+    /// let rust_value = RustType::take_ptr(&mut c_value); // BAD!
+    /// ```
+    ///
+    /// This creates undefined behavior as Rust will assume `c_value` is still initialized. Use
+    /// `take` in this situation.
     ///
     /// # Safety
     ///
     /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
     /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
     ///   CType value
-    /// * the memory pointed to by cptr is uninitialized when this function returns
-    unsafe fn take(cptr: *mut Self::CType) -> Self {
+    /// * the memory pointed to by cptr is uninitialized when this function returns.
+    unsafe fn take_ptr(cptr: *mut Self::CType) -> Self {
         check_size_and_alignment::<Self::CType, Self>();
         if cptr.is_null() {
             return Self::null_value();
         }
 
-        // convert cptr to a reference to Self
+        // convert cptr to a reference to MaybeUninit<Self> (which is, for the moment,
+        // actually initialized)
+
         // SAFETY:
         // - casting to a pointer type with the same alignment and smaller size
         let rref = unsafe { &mut *(cptr as *mut mem::MaybeUninit<Self>) };
-
-        // replace that with a zero value, and get what was there as an owned
-        // value
-        let owned = mem::replace(rref, mem::MaybeUninit::<Self>::zeroed());
+        let mut owned = mem::MaybeUninit::<Self>::zeroed();
+        // swap the actual value for the zeroed value
+        mem::swap(rref, &mut owned);
 
         // SAFETY:
         //  - owned contains what cptr was pointing to, which the caller guaranteed to be valid
@@ -214,32 +248,89 @@ mod test {
     mod init_and_use {
         use crate::opaque::*;
         struct RType(u32, u64);
-        struct CType([u64; 2]);
+        struct CType([u64; 3]); // NOTE: larger than RType
 
         impl OpaqueStruct for RType {
             type CType = CType;
         }
 
         #[test]
-        fn test() {
+        fn intialize_and_with_methods() {
             unsafe {
                 let mut cval = mem::MaybeUninit::<CType>::uninit();
-                RType::initialize(cval.as_mut_ptr(), RType(10, 10));
+                RType::initialize(cval.as_mut_ptr(), RType(10, 20));
+                let mut cval = cval.assume_init();
 
-                RType::with_ref(cval.as_ptr(), |rref| {
+                RType::with_ref(&cval, |rref| {
                     assert_eq!(rref.0, 10);
+                    assert_eq!(rref.1, 20);
                 });
 
-                RType::with_ref_mut(cval.as_mut_ptr(), |rref| {
+                RType::with_ref_mut(&mut cval, |rref| {
                     assert_eq!(rref.0, 10);
-                    rref.0 = 20;
+                    assert_eq!(rref.1, 20);
+                    rref.0 = 30;
                 });
 
-                RType::with_ref(cval.as_ptr(), |rref| {
-                    assert_eq!(rref.0, 20);
+                RType::with_ref(&cval, |rref| {
+                    assert_eq!(rref.0, 30);
+                    assert_eq!(rref.1, 20);
                 });
 
-                RType::take(cval.as_mut_ptr()); // ..and implicitly drop
+                RType::take(cval); // ..and implicitly drop
+            }
+        }
+
+        #[test]
+        fn return_val_and_with_methods() {
+            unsafe {
+                let mut cval = RType(10, 20).return_val();
+
+                RType::with_ref(&cval, |rref| {
+                    assert_eq!(rref.0, 10);
+                    assert_eq!(rref.1, 20);
+                });
+
+                RType::with_ref_mut(&mut cval, |rref| {
+                    assert_eq!(rref.0, 10);
+                    assert_eq!(rref.1, 20);
+                    rref.0 = 30;
+                });
+
+                RType::with_ref(&cval, |rref| {
+                    assert_eq!(rref.0, 30);
+                    assert_eq!(rref.1, 20);
+                });
+
+                RType::take(cval); // ..and implicitly drop
+            }
+        }
+
+        #[test]
+        fn take_ptr() {
+            unsafe {
+                // allocate enough bytes for a cval without initializing them
+                let cval = Box::new(mem::MaybeUninit::<CType>::uninit());
+                let cvalptr = Box::into_raw(cval) as *mut CType;
+
+                // initialize the value
+                RType::initialize(cvalptr, RType(10, 20));
+
+                // take the value and leave behind zeroed memory
+                let rval = RType::take_ptr(cvalptr);
+                assert_eq!(rval.0, 10);
+                assert_eq!(rval.1, 20);
+
+                // Verify that the memory is zeroed -- don't do this IRL!  NOTE: in practice only
+                // the non-padding bytes of the value are actually zeroed, so we cannot assert that
+                // all of the bytes pointed to by cvalptr are zero.
+                let zeroedref = unsafe { &*(cvalptr as *const RType) };
+                assert_eq!(zeroedref.0, 0);
+                assert_eq!(zeroedref.1, 0);
+
+                // deallocate by turning cvalptr back into a Box and dropping the Box, but
+                // using MaybeUninit to prevent dropping the (invalid) enclosed CType.
+                unsafe { Box::from_raw(cvalptr as *mut mem::MaybeUninit<CType>) };
             }
         }
     }
