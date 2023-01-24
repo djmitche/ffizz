@@ -226,6 +226,7 @@ impl HeaderItem {
         tokens.extend(quote! {
             #[::ffizz_header::linkme::distributed_slice(::ffizz_header::FFIZZ_HEADER_ITEMS)]
             #[linkme(crate=::ffizz_header::linkme)]
+            #[allow(non_upper_case_globals)]
             static #item_name: ::ffizz_header::HeaderItem = ::ffizz_header::HeaderItem {
                 order: #order,
                 name: #name,
