@@ -3,7 +3,7 @@ It provides a way to pass strings into Rust functions and to return strings to C
 
 ## Usage
 
-### Stirng Type
+### String Type
 
 Expose the C type `fz_string_t` in your C header as a struct with the same structure as that in the [`fz_string_t`] docstring.
 This is large enough to hold the [`FzString`] type, and ensures the C compiler will properly align the value.
@@ -35,13 +35,26 @@ pub use ffizz_string::fz_string_free as mystrtype_free;
 
 ### Strings as Function Arguments
 
+There are two design decisions to make when accepting strings as function arguments.
+First, does ownership of the string transfer from the caller to the callee?
+Or in Rust terms, is the value moved?
+This is largely a matter of convenience for the callers, but it's best to be consistent throughout an API.
+
+Second, do you want to pass strings by value or pointer?
+Passing by pointer is recommended as it is typically more efficient and allows invalidating moved values in a way that prevents use-after-free errors.
+
+#### By Pointer
+
 Define your `extern "C"` function to take a `*mut fz_string_t` argument:
 
 ```ignore
-pub unsafe extern "C" fn is_a_color_name(name: *mut fz_string_t) -> bool { .. };
+pub unsafe extern "C" fn is_a_color_name(name: *const fz_string_t) -> bool { .. };
 ```
 
-Then use one of the FzString methods to handle the string value.
+If taking ownership of the value, use [`FzString::take_ptr`].
+Otherwise, use [`FzString::with_ref`] or [`FzString::with_ref_mut`] to borrow a reference from the pointer.
+
+All of these methods are unsafe.
 As standard practice, address each of the items listed in the "Safety" section of each unsafe method you call.
 For example:
 
@@ -59,6 +72,38 @@ unsafe {
 }
 ```
 
+#### By Value
+
+Pass strings by value of type `fz_string_t`:
+
+```ignore
+pub unsafe extern "C" fn is_a_color_name(name: *const fz_string_t) -> bool { .. };
+```
+
+Then, use [`FzString::take`] to take ownership of the string as a Rust value.
+There is no option for the caller to retain ownership when passing by value.
+
+#### Always Take Everything
+
+If your C API definition indicates that a function takes ownership of values in its function arguments, take ownersihp of _all_ arguments before any early returns can occur.
+For example:
+
+```ignore
+pub unsafe extern "C" convolve_strings(a: *const fz_string_t, b: *const fz_string_t) -> bool {
+    // SAFETY: ...
+    let a = unsafe { FzString::take_ptr(a) };
+    if a.len() == 0 {
+        return false;
+    }
+    // SAFETY: ...
+    let b = unsafe { FzString::take_ptr(b) }; // BAD!
+    // ...
+}
+```
+
+Here, if `a` is invalid, the function will not free `b`, despite the API contract promising to do so.
+To fix, move the `let b` statement before the early return.
+
 ### Strings as Return Values
 
 To return a string, define your `extern "C"` function to return an `fz_string_t`:
@@ -66,12 +111,24 @@ To return a string, define your `extern "C"` function to return an `fz_string_t`
 pub unsafe extern "C" fn favorite_color() -> fz_string_t { .. }
 ```
 
-Then use `FzString::return_val` to return the value:
+Then use [`FzString::return_val`] to return the value:
 ```ignore
 // SAFETY:
 //  - caller will free the returned string (see docstring)
 unsafe {
     return FzString::return_val(color);
+}
+```
+
+### Strings as Out Parameters
+
+An "out parameter" is a common idiom in C and C++.
+To return a string into an out parameter, use [`FzString::initialize`]:
+
+```ignore
+result = FzString::from("the result");
+unsafe {
+    FzString::initialize(result_out, result);
 }
 ```
 
@@ -85,4 +142,4 @@ The implementation is general-purpose, and may result in more allocations or str
 This is particularly true if the Rust implementation immediately converts `FzString` into `std::string::String`.
 This conversion brings great simplicity, but involves an allocation and a copy of the string.
 
-In situations where API performance is critical, it may be preferable to create a purpose-specific string implementation, perhaps inspired by this crate.
+In situations where API performance is critical, it may be preferable to use `FzString` throughout the implementation.

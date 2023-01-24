@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(unused_unsafe)]
 
-use ffizz_passby::{OpaqueStruct, PassByPointer};
+use ffizz_passby::PassByPointer;
 use ffizz_string::{fz_string_t as kvstore_string_t, FzString};
 use std::collections::HashMap;
 
