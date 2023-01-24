@@ -13,6 +13,9 @@ use std::path::PathBuf;
 /// This type accepts whatever kind of data it receives without error, and converts -- potentially
 /// with an error -- when output of a different kind is required.
 ///
+/// A number of `From<T>` implementations are provided to convert from common Rust types. The
+/// `fz_string_..` utility functions provide conversions from various string formats.
+///
 /// FzStrings also have a special "Null" state, similar to the None variant of Option.  For user
 /// convenience, a NULL pointer is treated as a pointer to the Null variant wherever a pointer is
 /// accepted.  Rust code should use the `_nonnull` methods where the Null variant is not allowed.
