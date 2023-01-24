@@ -28,7 +28,7 @@ pub unsafe extern "C" fn byte_buffer_new() -> byte_buffer_t {
 /// Initialize the given byte_buffer_t to an empty value.
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_init(bb: *mut byte_buffer_t) {
-    unsafe { ByteBuffer::initialize(bb, ByteBuffer(Vec::new())) }
+    unsafe { ByteBuffer(Vec::new()).to_out_param_nonnull(bb) }
 }
 
 /// Free a byte_buffer_t.

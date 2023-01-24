@@ -123,12 +123,12 @@ unsafe {
 ### Strings as Out Parameters
 
 An "out parameter" is a common idiom in C and C++.
-To return a string into an out parameter, use [`FzString::initialize`]:
+To return a string into an out parameter, use [`FzString::to_out_param`] or [`FzString::to_out_param_nonnull`]:
 
 ```ignore
 result = FzString::from("the result");
 unsafe {
-    FzString::initialize(result_out, result);
+    FzString::to_out_param(result_out, result);
 }
 ```
 

@@ -227,7 +227,26 @@ impl<'a> FzString<'a> {
 
     /// Initialize the value pointed to fzstr with, "moving" it into the pointer.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::initialize`.
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::to_out_param`.
+    ///
+    /// If the pointer is NULL, the value is dropped.
+    ///
+    /// # Safety
+    ///
+    /// * if fzstr is not NULl, then it must be aligned for fz_string_t, and must have enough space
+    ///   for fz_string_t.
+    /// * ownership of the string is transfered to `*fzstr` or dropped.
+    #[inline]
+    pub unsafe fn to_out_param(self, fzstr: *mut fz_string_t) {
+        unsafe { <Self as OpaqueStruct>::to_out_param(self, fzstr) }
+    }
+
+    /// Initialize the value pointed to fzstr with, "moving" it into the pointer.
+    ///
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::to_out_param_nonnull`.
+    ///
+    /// If the pointer is NULL, this method will panic.  Use this when the C API requires that the
+    /// pointer be non-NULL.
     ///
     /// # Safety
     ///
@@ -235,8 +254,8 @@ impl<'a> FzString<'a> {
     ///   fz_string_t.
     /// * ownership of the string is transfered to `*fzstr`.
     #[inline]
-    pub unsafe fn initialize(fzstr: *mut fz_string_t, val: FzString<'a>) {
-        unsafe { <Self as OpaqueStruct>::initialize(fzstr, val) }
+    pub unsafe fn to_out_param_nonnull(self, fzstr: *mut fz_string_t) {
+        unsafe { <Self as OpaqueStruct>::to_out_param_nonnull(self, fzstr) }
     }
 
     /// Return a `fz_string_t` transferring ownership out of the function.
