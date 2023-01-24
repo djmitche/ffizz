@@ -45,10 +45,12 @@ pub trait OpaqueStruct: Sized {
     /// Call the contained function with a shared reference to the data type.
     ///
     /// # Safety
+    ///
     /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
     /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
     ///   CType value
-    /// * no other thread may mutate the value pointed to by CType until with_ref returns.
+    /// * no other thread may mutate the value pointed to by cptr until `with_ref` returns.
+    /// * ownership of the value remains with the caller.
     unsafe fn with_ref<T, F: Fn(&Self) -> T>(cptr: *const Self::CType, f: F) -> T {
         check_size_and_alignment::<Self::CType, Self>();
         if cptr.is_null() {
@@ -67,7 +69,8 @@ pub trait OpaqueStruct: Sized {
     /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
     /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
     ///   CType value
-    /// * no other thread may access the value pointed to by CType until with_ref_mut returns.
+    /// * no other thread may access the value pointed to by cptr until with_ref_mut returns.
+    /// * ownership of the value remains with the caller.
     unsafe fn with_ref_mut<T, F: Fn(&mut Self) -> T>(cptr: *mut Self::CType, f: F) -> T {
         check_size_and_alignment::<Self::CType, Self>();
         if cptr.is_null() {
@@ -100,8 +103,7 @@ pub trait OpaqueStruct: Sized {
     ///
     /// # Safety
     ///
-    /// * to avoid a leak, the value must eventually be moved out of the return value
-    ///   and into a Rust value to be dropped (see [`OpaqueStruct::take`])
+    /// * to avoid a leak, ownership of the value must eventually be returned to Rust.
     unsafe fn return_val(self) -> Self::CType {
         check_size_and_alignment::<Self::CType, Self>();
         // create a new value of type Self::CType, uninitialized, and make a pointer to it
@@ -132,9 +134,10 @@ pub trait OpaqueStruct: Sized {
     ///
     /// This method is intended for C API functions that take the value by value and are
     /// documented as taking ownership of the value.  However, this means that C retains
-    /// an expired "copy" of the value and could lead to use-after-free errors.  An
-    /// alternative is for the C API function to take the value by pointer and use
-    /// `take_ptr`, which invalidates the source value.
+    /// an expired "copy" of the value and could lead to use-after-free errors.
+    ///
+    /// Where compatible with the API design, prefer to use pointers in the C API and use
+    /// [`take_ptr`] to ensure the old value is invalidated.
     ///
     /// # Safety
     ///

@@ -199,6 +199,104 @@ impl<'a> FzString<'a> {
         }
     }
 
+    /// Call the contained function with a shared reference to the FzString.
+    ///
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::with_ref`.
+    ///
+    /// # Safety
+    ///
+    /// * fzstr must be NULL or point to a valid fz_string_t value
+    /// * no other thread may mutate the value pointed to by fzstr until with_ref returns.
+    #[inline]
+    pub unsafe fn with_ref<T, F: Fn(&FzString) -> T>(fzstr: *const fz_string_t, f: F) -> T {
+        unsafe { <Self as OpaqueStruct>::with_ref(fzstr, f) }
+    }
+
+    /// Call the contained function with an exclusive reference to the FzString.
+    ///
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::with_ref_mut`.
+    ///
+    /// # Safety
+    ///
+    /// * fzstr must be NULL or point to a valid `fz_string_t` value
+    /// * no other thread may access the value pointed to by `fzstr` until `with_ref_mut` returns.
+    #[inline]
+    pub unsafe fn with_ref_mut<T, F: Fn(&mut FzString) -> T>(fzstr: *mut fz_string_t, f: F) -> T {
+        unsafe { <Self as OpaqueStruct>::with_ref_mut(fzstr, f) }
+    }
+
+    /// Initialize the value pointed to fzstr with, "moving" it into the pointer.
+    ///
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::initialize`.
+    ///
+    /// # Safety
+    ///
+    /// * fzstr must not be NULL, must be aligned for fz_string_t, and must have enough space for
+    ///   fz_string_t.
+    /// * ownership of the string is transfered to `*fzstr`.
+    #[inline]
+    pub unsafe fn initialize(fzstr: *mut fz_string_t, val: FzString<'a>) {
+        unsafe { <Self as OpaqueStruct>::initialize(fzstr, val) }
+    }
+
+    /// Return a `fz_string_t` transferring ownership out of the function.
+    ///
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::return_val`.
+    ///
+    /// # Safety
+    ///
+    /// * to avoid a leak, ownership of the value must eventually be returned to Rust.
+    #[inline]
+    pub unsafe fn return_val(self) -> fz_string_t {
+        unsafe { <Self as OpaqueStruct>::return_val(self) }
+    }
+
+    /// Take a `fz_string_t` by value and return an owned `FzString`.
+    ///
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::take`.
+    ///
+    /// This method is intended for C API functions that take a string by value and are
+    /// documented as taking ownership of the value.  However, this means that C retains
+    /// an expired "copy" of the value and could lead to use-after-free errors.
+    ///
+    /// Where compatible with the API design, prefer to use pointers in the C API and use
+    /// [`take_ptr`] to ensure the old value is invalidated.
+    ///
+    /// # Safety
+    ///
+    /// * fzstr must be a valid `fz_string_t` value
+    #[inline]
+    pub unsafe fn take(fzstr: fz_string_t) -> Self {
+        unsafe { <Self as OpaqueStruct>::take(fzstr) }
+    }
+
+    /// Take a pointer to a CType and return an owned value.
+    ///
+    /// This is a wrapper around `ffizz_passby::OpaqueStruct::take_ptr`.
+    ///
+    /// This is intended for C API functions that take a value by reference (pointer), but still
+    /// "take ownership" of the value.  It leaves behind an invalid value, where any non-padding
+    /// bytes of the Rust type are zeroed.  This makes use-after-free errors in the C code more
+    /// likely to crash instead of silently working.  Which is about as good as it gets in C.
+    ///
+    /// Do _not_ pass a pointer to a Rust value to this function:
+    ///
+    /// ```ignore
+    /// let rust_value = RustType::take_ptr(&mut c_value); // BAD!
+    /// ```
+    ///
+    /// This creates undefined behavior as Rust will assume `c_value` is still initialized. Use
+    /// `take` in this situation.
+    ///
+    /// # Safety
+    ///
+    /// * fzstr must be NULL or point to a valid fz_string_t value.
+    /// * the memory pointed to by fzstr is uninitialized when this function returns.
+    #[inline]
+    pub unsafe fn take_ptr(fzstr: *mut fz_string_t) -> Self {
+        unsafe { <Self as OpaqueStruct>::take_ptr(fzstr) }
+    }
+
     /// Convert the FzString, in place, from a Bytes to String variant, returning None if
     /// the bytes do not contain valid UTF-8.
     fn bytes_to_string(&mut self) -> Result<(), InvalidUTF8Error> {

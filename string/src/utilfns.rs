@@ -1,5 +1,4 @@
 use crate::{fz_string_t, FzString};
-use ffizz_passby::OpaqueStruct;
 use libc::c_char;
 use std::ffi::{CStr, CString};
 
