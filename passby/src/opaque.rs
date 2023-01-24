@@ -16,7 +16,7 @@ use std::mem;
 /// This type contains debug assertions regarding the size of the Rust and C types, and will fail
 /// at runtime if the alignment or size of the two types is not as required.
 ///
-/// This type provides two functions useful for initialization of a type: `initialize` takes an
+/// This type provides two functions useful for initialization of a type: `to_out_param` takes an
 /// "out arg" pointing to an uninitialized value, and initializes it; while `return_val` simply
 /// returns a struct value that can be used to initialize a variable.  Both function similarly,
 /// so choose the one that makes the most senes for your API.  For example, a constructor which
@@ -85,18 +85,46 @@ pub trait OpaqueStruct: Sized {
 
     /// Initialize the value pointed to cptr with rval, "moving" rval into the pointer.
     ///
+    /// If the pointer is NULL, rval is dropped.  Use [`to_out_param_nonnull`] to panic in this
+    /// situation.
+    ///
+    /// # Safety
+    ///
+    /// * if cptr is not NULL, then it must be aligned for CType and must have enough space for
+    ///   CType.
+    /// * to avoid a leak, the value must eventually be moved out of *cptr and into a Rust value
+    ///   to be dropped (see [`OpaqueStruct::take`])
+    unsafe fn to_out_param(self, cptr: *mut Self::CType) {
+        check_size_and_alignment::<Self::CType, Self>();
+        if !cptr.is_null() {
+            // SAFETY:
+            // - casting to a pointer type with the same alignment and smaller size
+            // - MaybeUninit<Self> has the same layout as Self
+            let rref = unsafe { &mut *(cptr as *mut mem::MaybeUninit<Self>) };
+            rref.write(self);
+        }
+    }
+
+    /// Initialize the value pointed to cptr with rval, "moving" rval into the pointer.
+    ///
+    /// If the pointer is NULL, this method will panic.
+    ///
     /// # Safety
     ///
     /// * cptr must not be NULL, must be aligned for CType, and must have enough space for CType.
     /// * to avoid a leak, the value must eventually be moved out of *cptr and into a Rust value
     ///   to be dropped (see [`OpaqueStruct::take`])
-    unsafe fn initialize(cptr: *mut Self::CType, rval: Self) {
+    unsafe fn to_out_param_nonnull(self, cptr: *mut Self::CType) {
         check_size_and_alignment::<Self::CType, Self>();
+        if cptr.is_null() {
+            panic!("out param pointer is NULL");
+        }
+
         // SAFETY:
         // - casting to a pointer type with the same alignment and smaller size
         // - MaybeUninit<Self> has the same layout as Self
         let rref = unsafe { &mut *(cptr as *mut mem::MaybeUninit<Self>) };
-        rref.write(rval);
+        rref.write(self);
     }
 
     /// Return a CType containing self, moving self in the process.
@@ -261,7 +289,7 @@ mod test {
         fn intialize_and_with_methods() {
             unsafe {
                 let mut cval = mem::MaybeUninit::<CType>::uninit();
-                RType::initialize(cval.as_mut_ptr(), RType(10, 20));
+                RType(10, 20).to_out_param(cval.as_mut_ptr());
                 let mut cval = cval.assume_init();
 
                 RType::with_ref(&cval, |rref| {
@@ -317,7 +345,7 @@ mod test {
                 let cvalptr = Box::into_raw(cval) as *mut CType;
 
                 // initialize the value
-                RType::initialize(cvalptr, RType(10, 20));
+                RType(10, 20).to_out_param(cvalptr);
 
                 // take the value and leave behind zeroed memory
                 let rval = RType::take_ptr(cvalptr);
