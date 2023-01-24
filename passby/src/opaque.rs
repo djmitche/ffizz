@@ -46,8 +46,8 @@ pub trait OpaqueStruct: Sized {
     ///
     /// # Safety
     ///
-    /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
-    /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
+    /// * for types defining [`OpaqueStruct::null_value`]: cptr must be NULL or point to a valid CType value
+    /// * for types not defining [`OpaqueStruct::null_value`]: cptr must not be NULL and must point to a valid
     ///   CType value
     /// * no other thread may mutate the value pointed to by cptr until `with_ref` returns.
     /// * ownership of the value remains with the caller.
@@ -66,8 +66,8 @@ pub trait OpaqueStruct: Sized {
     ///
     /// # Safety
     ///
-    /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
-    /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
+    /// * for types defining [`OpaqueStruct::null_value`]: cptr must be NULL or point to a valid CType value
+    /// * for types not defining [`OpaqueStruct::null_value`]: cptr must not be NULL and must point to a valid
     ///   CType value
     /// * no other thread may access the value pointed to by cptr until with_ref_mut returns.
     /// * ownership of the value remains with the caller.
@@ -85,7 +85,7 @@ pub trait OpaqueStruct: Sized {
 
     /// Initialize the value pointed to cptr with rval, "moving" rval into the pointer.
     ///
-    /// If the pointer is NULL, rval is dropped.  Use [`to_out_param_nonnull`] to panic in this
+    /// If the pointer is NULL, rval is dropped.  Use [`OpaqueStruct::to_out_param_nonnull`] to panic in this
     /// situation.
     ///
     /// # Safety
@@ -165,7 +165,7 @@ pub trait OpaqueStruct: Sized {
     /// an expired "copy" of the value and could lead to use-after-free errors.
     ///
     /// Where compatible with the API design, prefer to use pointers in the C API and use
-    /// [`take_ptr`] to ensure the old value is invalidated.
+    /// [`OpaqueStruct::take_ptr`] to ensure the old value is invalidated.
     ///
     /// # Safety
     ///
@@ -203,8 +203,8 @@ pub trait OpaqueStruct: Sized {
     ///
     /// # Safety
     ///
-    /// * for types defining [`null_value`]: cptr must be NULL or point to a valid CType value
-    /// * for types not defining [`null_value`]: cptr must not be NULL and must point to a valid
+    /// * for types defining [`OpaqueStruct::null_value`]: cptr must be NULL or point to a valid CType value
+    /// * for types not defining [`OpaqueStruct::null_value`]: cptr must not be NULL and must point to a valid
     ///   CType value
     /// * the memory pointed to by cptr is uninitialized when this function returns.
     unsafe fn take_ptr(cptr: *mut Self::CType) -> Self {

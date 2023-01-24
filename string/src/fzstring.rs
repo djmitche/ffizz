@@ -327,7 +327,7 @@ impl<'a> FzString<'a> {
     /// an expired "copy" of the value and could lead to use-after-free errors.
     ///
     /// Where compatible with the API design, prefer to use pointers in the C API and use
-    /// [`take_ptr`] to ensure the old value is invalidated.
+    /// [`FzString::take_ptr`] to ensure the old value is invalidated.
     ///
     /// # Safety
     ///
