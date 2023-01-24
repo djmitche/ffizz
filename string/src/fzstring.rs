@@ -13,10 +13,10 @@ use std::path::PathBuf;
 /// This type accepts whatever kind of data it receives without error, and converts -- potentially
 /// with an error -- when output of a different kind is required.
 ///
-/// FzStrings also have a special "Null" state, similar to the None variant of Option.  Rust code
-/// should use `.unwrap()` where the Null variant is not allowed.  For user convenience, a NULL
-/// pointer is treated as a pointer to the Null variant wherever a pointer is accepted.  Note that
-/// the Null variant is not necessarily represented with an all-zero byte pattern.
+/// FzStrings also have a special "Null" state, similar to the None variant of Option.  For user
+/// convenience, a NULL pointer is treated as a pointer to the Null variant wherever a pointer is
+/// accepted.  Rust code should use the `_nonnull` methods where the Null variant is not allowed.
+/// Note that the Null variant is not necessarily represented with an all-zero byte pattern.
 ///
 /// A FzString points to allocated memory, and must be freed to avoid memory leaks.
 #[derive(PartialEq, Eq, Debug)]
@@ -107,6 +107,15 @@ impl<'a> FzString<'a> {
         })
     }
 
+    /// Convert this FzString, assuming it is not Null, into `&str`.
+    ///
+    /// This is a simple wrapper that will panic on the Null variant.  This is useful when
+    /// the C API prohibits NULL.
+    pub fn as_str_nonnull(&mut self) -> Result<&str, InvalidUTF8Error> {
+        self.as_str()
+            .map(|opt| opt.expect("unexpected NULL string"))
+    }
+
     /// Convert this value to a CStr: a slice of bytes containing a valid, NUL-terminated C string.
     ///
     /// If required, the FzString is converted in-place to a CString variant. If this conversion
@@ -128,6 +137,15 @@ impl<'a> FzString<'a> {
             FzString::Bytes(_) => unreachable!(),  // handled above
             FzString::Null => None,
         })
+    }
+
+    /// Convert this FzString, assuming it is not Null, into a CStr.
+    ///
+    /// This is a simple wrapper that will panic on the Null variant.  This is useful when
+    /// the C API prohibits NULL.
+    pub fn as_cstr_nonnull(&mut self) -> Result<&CStr, EmbeddedNulError> {
+        self.as_cstr()
+            .map(|opt| opt.expect("unexpected NULL string"))
     }
 
     /// Consume this FzString and return an equivalent String.
@@ -157,6 +175,15 @@ impl<'a> FzString<'a> {
         })
     }
 
+    /// Consume this FzString, assuming it is not Null, and return an equivalent String.
+    ///
+    /// This is a simple wrapper that will panic on the Null variant.  This is useful when
+    /// the C API prohibits NULL.
+    pub fn into_string_nonnull(self) -> Result<String, InvalidUTF8Error> {
+        self.into_string()
+            .map(|opt| opt.expect("unexpected NULL string"))
+    }
+
     /// Consume this FzString and return an equivalent PathBuf.
     ///
     /// As with `as_str`, the FzString is converted in-place, and this conversion can fail.  In the
@@ -182,6 +209,15 @@ impl<'a> FzString<'a> {
         Ok(path.map(|p| p.into()))
     }
 
+    /// Consume this FzString, assuming it is not Null, and return an equivalent PathBuf.
+    ///
+    /// This is a simple wrapper that will panic on the Null variant.  This is useful when
+    /// the C API prohibits NULL.
+    pub fn into_path_buf_nonnull(self) -> Result<PathBuf, std::str::Utf8Error> {
+        self.into_path_buf()
+            .map(|opt| opt.expect("unexpected NULL string"))
+    }
+
     /// Get the slice of bytes representing the content of this value, not including any NUL
     /// terminator.
     ///
@@ -197,6 +233,15 @@ impl<'a> FzString<'a> {
             FzString::Bytes(bytes) => Some(bytes.as_ref()),
             FzString::Null => None,
         }
+    }
+
+    /// Get the slice of bytes representing the content of this value, not including any NUL
+    /// terminator, panicing if this is the Null Variant.
+    ///
+    /// This is a simple wrapper that will panic on the Null variant.  This is useful when
+    /// the C API prohibits NULL.
+    pub fn as_bytes_nonnull(&self) -> &[u8] {
+        self.as_bytes().expect("unexpected NULL string")
     }
 
     /// Call the contained function with a shared reference to the FzString.
@@ -527,6 +572,17 @@ mod test {
         assert!(make_null().as_str().unwrap().is_none());
     }
 
+    #[test]
+    fn as_str_nonnull_string() {
+        assert_eq!(make_string().as_str_nonnull().unwrap(), "a string");
+    }
+
+    #[test]
+    #[should_panic]
+    fn as_str_nonnull_null() {
+        let _res = make_null().as_str_nonnull();
+    }
+
     // as_cstr
 
     #[test]
@@ -574,6 +630,17 @@ mod test {
     #[test]
     fn as_cstr_null() {
         assert_eq!(make_null().as_cstr().unwrap(), None);
+    }
+
+    #[test]
+    fn as_cstr_nonnull_string() {
+        assert_eq!(make_string().as_cstr_nonnull().unwrap(), cstr("a string\0"));
+    }
+
+    #[test]
+    #[should_panic]
+    fn as_cstr_nonnull_null() {
+        let _res = make_null().as_cstr_nonnull();
     }
 
     // into_string
@@ -639,6 +706,20 @@ mod test {
         assert_eq!(make_null().into_string().unwrap(), None);
     }
 
+    #[test]
+    fn into_string_nonnull_string() {
+        assert_eq!(
+            make_string().into_string_nonnull().unwrap(),
+            String::from("a string")
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn into_string_nonnull_null() {
+        let _res = make_null().into_string_nonnull();
+    }
+
     // into_path_buf
 
     #[test]
@@ -702,6 +783,20 @@ mod test {
         assert_eq!(make_null().into_path_buf().unwrap(), None);
     }
 
+    #[test]
+    fn into_path_buf_nonnull_string() {
+        assert_eq!(
+            make_string().into_path_buf_nonnull().unwrap(),
+            PathBuf::from("a string")
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn into_path_buf_nonnull_null() {
+        let _res = make_null().into_path_buf_nonnull();
+    }
+
     // as_bytes
 
     #[test]
@@ -737,6 +832,17 @@ mod test {
     #[test]
     fn as_bytes_null() {
         assert_eq!(make_null().as_bytes(), None);
+    }
+
+    #[test]
+    fn as_bytes_nonnul_string() {
+        assert_eq!(make_string().as_bytes_nonnull(), b"a string");
+    }
+
+    #[test]
+    #[should_panic]
+    fn as_bytes_nonnull_null() {
+        let _res = make_null().as_bytes_nonnull();
     }
 
     // From<..>
