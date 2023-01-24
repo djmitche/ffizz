@@ -3,6 +3,9 @@ It provides a way to pass strings into Rust functions and to return strings to C
 
 ## Usage
 
+The types in this crate are specializations of a `ffizz_passby::OpaqueStruct`.
+See the documentation `ffizz-passby` crate for more general guidance on creating effective C APIs.
+
 ### String Type
 
 Expose the C type `fz_string_t` in your C header as a struct with the same structure as that in the [`fz_string_t`] docstring.
@@ -17,6 +20,7 @@ You may also rename the Rust type with `use ffizz_string::fz_string_t as ..`, if
 This crate includes a number of utility functions, named `fz_string_..`.
 These can be re-exported to C using whatever names you prefer, and with docstrings based on those in this crate, including C declarations:
 
+<!-- NOTE: this does not work - see https://github.com/djmitche/ffizz/issues/13 -->
 ```ignore
 #[ffizz_header::item]
 #[ffizz(order = 110)]

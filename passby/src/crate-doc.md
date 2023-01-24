@@ -18,6 +18,9 @@ This is illustrated in the examples throughout the documentation.
 
 ## General Advice
 
+In general, C APIs rely on programmers to carefully read the API documentation and follow its rules, without help from the compiler.
+Where possible, design APIs to make this easy, with simple-to-remember rules and runtime checks where practical.
+
 ### Taking Ownership
 
 When a function is documented as taking ownership of a value, ensure that this is always the case, even if an error occurs.
@@ -38,3 +41,17 @@ unsafe extern "C" fn infprec_div(a: infprec_t, b: infprec_t, c_out: *infprec_t) 
 The caller expects that `infprec_div` takes ownership of `a` and `b`, and will not free them on return.
 As written, when `b` is zero, the early return occurs before `a` has been converted to a Rust value, so it will not be dropped, and will leak.
 The fix, in this case, is to move the `let a` statement before the early return.
+
+### Hidden Mutability
+
+Rust makes a strict distinction between a shared, read-only reference and an exclusive, mutable reference.
+C typically makes no such distinction, and avoids data races though careful comments as to which methods can be called concurrently.
+In most cases, C programmers will "guess" what methods can be called concurrently.
+A good C APi will make these guesses explicit.
+
+For example, a type might be documented as not threadsafe, where no functions may be called concurrently for a single value of the type.
+For many types, however, read-only methds can be called concurrently, as long as they are not concurrent with modifications.
+For example, it may be safe to call `kvstore_get` on a `kvstore_t` concurrently, as long as those calls do not overlap ay `kvstore_set` calls.
+
+Interior mutability requires even more careful documentation.
+Continuing the example, perhaps the `kvstore_t` data structure rebalances itself on read, in which case `kvstore_get` is _not_ safe to call concurrently, even though it appears to be a read-only operation.
