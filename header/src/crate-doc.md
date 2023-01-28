@@ -52,7 +52,7 @@ If your workspace contains multiple libraries, another option is to build a bina
 
 ## Defining Headers
 
-Typically, a library exporting a header will define its topmatter and corresponding footer in `src/lib.rs`, using [`ffizz_header::snippet`].
+Typically, a library exporting a header will define its topmatter and corresponding footer in `src/lib.rs`, using [`snippet`].
 
 ```
 ffizz_header::snippet! {
@@ -75,7 +75,7 @@ ffizz_header::snippet! {
 
 The topmatter might also include forward declarations of types or macros.
 
-The remaining declarations will be for types and exported functions, using [`ffizz_header::item`].
+The remaining declarations will be for types and exported functions, using [`item`].
 It can be helpful to define a range of `order` values for each source file, to keep related declarations together in the generated header.
 
 ```
