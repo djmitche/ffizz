@@ -9,13 +9,14 @@ version = "0.3.4"
 edition = "2021"
 
 [dependencies]
+# all non-ffizz dependencies should be specified in the workspace
+libc = { workspace = true }
+
 ffizz-passby = { version = "0.3.4", path = "../passby" }
 ffizz-header = { version = "0.3.4", path = "../header" }
-libc = "0.2.131"
 
 [dev-dependencies]
-uuid = { version = "^1.1.2", features = ["v4"] }
-libc = "0.2.129"
+uuid = { workspace = true }
 
 [package.metadata.docs.rs]
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]

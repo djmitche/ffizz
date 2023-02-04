@@ -9,8 +9,10 @@ version = "0.3.4"
 edition = "2021"
 
 [dependencies]
-linkme = "0.3.3"
-itertools = "0.10"
+# all non-ffizz dependencies should be specified in the workspace
+itertools = { workspace = true }
+linkme = { workspace = true }
+
 ffizz-macros = { version = "0.3.4", path = "../macros" }
 
 [package.metadata.docs.rs]
