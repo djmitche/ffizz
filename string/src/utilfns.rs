@@ -162,7 +162,7 @@ pub unsafe fn fz_string_content(fzstr: *mut fz_string_t) -> *const c_char {
 /// passed to any other API function.
 ///
 /// ```c
-/// const char *fz_string_content_with_len(fz_string_t *, len_out *usize);
+/// const char *fz_string_content_with_len(const struct fz_string_t *, len_out *usize);
 /// ```
 #[inline(always)]
 pub unsafe fn fz_string_content_with_len(
@@ -174,7 +174,7 @@ pub unsafe fn fz_string_content_with_len(
     //  - *fzstr is valid (promised by caller)
     //  - *fzstr is not accessed concurrently (single-threaded)
     unsafe {
-        FzString::with_ref_mut(fzstr, |fzstr| {
+        FzString::with_ref(fzstr, |fzstr| {
             let bytes = match fzstr.as_bytes() {
                 Some(bytes) => bytes,
                 None => {
