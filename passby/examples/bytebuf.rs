@@ -3,7 +3,7 @@
 #![allow(clippy::missing_safety_doc)]
 #![allow(unused_unsafe)]
 
-use ffizz_passby::OpaqueStruct;
+use ffizz_passby::Unboxed;
 
 /// ByteBuffer defines a buffer full of bytes.
 struct ByteBuffer(Vec<u8>);
@@ -11,31 +11,33 @@ struct ByteBuffer(Vec<u8>);
 /// byte_buffer_t contains a string, for sharing with Rust code.  Its contents are
 /// opaque and should not be manipulated.
 ///
-/// cbindgen:field-names=[_reserved]
+/// ```c
+/// strurct byte_buffer_t {
+///     _reserved size_t[N];
+/// };
+/// ```
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct byte_buffer_t([u64; 4]); // must be larger than ByteBuffer
 
-impl OpaqueStruct for ByteBuffer {
-    type CType = byte_buffer_t;
-}
+type UnboxedByteBuffer = Unboxed<ByteBuffer, byte_buffer_t>;
 
 /// Return a new empty byte_buffer_t.
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_new() -> byte_buffer_t {
-    unsafe { ByteBuffer::return_val(ByteBuffer(Vec::new())) }
+    unsafe { UnboxedByteBuffer::return_val(ByteBuffer(Vec::new())) }
 }
 
 /// Initialize the given byte_buffer_t to an empty value.
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_init(bb: *mut byte_buffer_t) {
-    unsafe { ByteBuffer(Vec::new()).to_out_param_nonnull(bb) }
+    unsafe { UnboxedByteBuffer::to_out_param_nonnull(ByteBuffer(Vec::new()), bb) }
 }
 
 /// Free a byte_buffer_t.
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_free(bb: *mut byte_buffer_t) {
-    let bb = unsafe { ByteBuffer::take_ptr(bb) };
+    let bb = unsafe { UnboxedByteBuffer::take_ptr_nonnull(bb) };
     drop(bb); // just to be explicit
 }
 
@@ -43,7 +45,7 @@ pub unsafe extern "C" fn byte_buffer_free(bb: *mut byte_buffer_t) {
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_checksum(bb: *const byte_buffer_t) -> u8 {
     unsafe {
-        ByteBuffer::with_ref(bb, |bb| {
+        UnboxedByteBuffer::with_ref_nonnull(bb, |bb| {
             // ok, not the most exciting "checksum"!
             bb.0.iter().copied().reduce(|a, b| a ^ b).unwrap_or(0)
         })
@@ -53,7 +55,7 @@ pub unsafe extern "C" fn byte_buffer_checksum(bb: *const byte_buffer_t) -> u8 {
 /// Add a byte to the byte buffer.
 #[no_mangle]
 pub unsafe extern "C" fn byte_buffer_push(bb: *mut byte_buffer_t, b: u8) {
-    unsafe { ByteBuffer::with_ref_mut(bb, |bb| bb.0.push(b)) }
+    unsafe { UnboxedByteBuffer::with_ref_mut_nonnull(bb, |bb| bb.0.push(b)) }
 }
 
 /// Combine two byte buffers, returning a new byte buffer containing the bytes
@@ -64,12 +66,12 @@ pub unsafe extern "C" fn byte_buffer_combine(
     bb1: *mut byte_buffer_t,
     bb2: *mut byte_buffer_t,
 ) -> byte_buffer_t {
-    let mut bb1 = unsafe { ByteBuffer::take_ptr(bb1) };
-    let bb2 = unsafe { ByteBuffer::take_ptr(bb2) };
+    let mut bb1 = unsafe { UnboxedByteBuffer::take_ptr_nonnull(bb1) };
+    let bb2 = unsafe { UnboxedByteBuffer::take_ptr_nonnull(bb2) };
 
     // modify bb1 in place (but it's not in the caller's location anymore)
     bb1.0.extend(&bb2.0[..]);
-    unsafe { ByteBuffer::return_val(bb1) }
+    unsafe { UnboxedByteBuffer::return_val(bb1) }
 }
 
 fn main() {

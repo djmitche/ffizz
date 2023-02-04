@@ -4,8 +4,6 @@
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::new_without_default)]
 
-use ffizz_passby::{PassByPointer, PassByValue};
-
 /// A simple little state machine for a system's status.  This module
 /// represents the Rust library being exposed via FFI.
 mod hittr {
@@ -20,6 +18,9 @@ mod hittr {
         pub status: Status,
     }
 
+    /// ```c
+    /// typedef struct hittr_system_t hittr_system_t;
+    /// ```
     impl System {
         pub fn new() -> System {
             System {
@@ -58,7 +59,7 @@ mod hittr {
 
 mod status {
     use super::hittr::Status;
-    use ffizz_passby::PassByValue;
+    use ffizz_passby::Value;
 
     #[allow(non_camel_case_types)]
     #[repr(C)]
@@ -71,20 +72,20 @@ mod status {
     pub const HITTR_STATUS_RUNNING: u8 = 2;
     pub const HITTR_STATUS_FAILED: u8 = 3;
 
-    impl PassByValue for Status {
-        type CType = hittr_status_t;
-
-        unsafe fn from_ctype(cval: hittr_status_t) -> Self {
-            match cval.status {
+    impl Into<Status> for hittr_status_t {
+        fn into(self) -> Status {
+            match self.status {
                 HITTR_STATUS_READY => Status::Ready,
-                HITTR_STATUS_RUNNING => Status::Running { count: cval.count },
+                HITTR_STATUS_RUNNING => Status::Running { count: self.count },
                 HITTR_STATUS_FAILED => Status::Failed,
                 _ => panic!("invalid status value"),
             }
         }
+    }
 
-        fn into_ctype(self) -> hittr_status_t {
-            match self {
+    impl From<Status> for hittr_status_t {
+        fn from(rval: Status) -> hittr_status_t {
+            match rval {
                 Status::Ready => hittr_status_t {
                     status: HITTR_STATUS_READY,
                     count: 0,
@@ -100,37 +101,30 @@ mod status {
             }
         }
     }
+
+    pub type StatusValue = Value<Status, hittr_status_t>;
 }
 
-mod system {
-    use super::hittr::System;
-    use ffizz_passby::PassByPointer;
-
-    /// This opaque struct represents a running Hittr system.
-    ///
-    /// Values of this type are not threadsafe and must be accessed by only
-    /// one thread at a time.
-    #[allow(non_camel_case_types)]
-    #[repr(C)]
-    pub struct hittr_system_t(pub System);
-
-    impl PassByPointer for hittr_system_t {}
-}
-
+use ffizz_passby::Boxed;
 use hittr::*;
 use status::*;
-use system::*;
+
+type BoxedSystem = Boxed<System>;
 
 /// Create a new Hittr system.
 ///
 /// # Safety
 ///
 /// The returned hittr_system_t must be freed with hittr_system_free.
+///
+/// ```c
+/// hittr_system_t *hittr_system_new();
+/// ```
 #[no_mangle]
-pub unsafe extern "C" fn hittr_system_new() -> *mut hittr_system_t {
+pub unsafe extern "C" fn hittr_system_new() -> *mut System {
     let sys = System::new();
     // SAFETY: function docs indicate value must be freed
-    unsafe { hittr_system_t(sys).return_ptr() }
+    unsafe { BoxedSystem::return_val(sys) }
 }
 
 /// Create a new Hittr system with a network port.  This returns true
@@ -140,14 +134,15 @@ pub unsafe extern "C" fn hittr_system_new() -> *mut hittr_system_t {
 ///
 /// The system_out argument must ne non-NULL and point to a valid, properly aligned
 /// `*hittr_system_t`.  The returned hittr_system_t must be freed with hittr_system_free.
+///
+/// ```c
+/// bool hittr_system_new_network(hittr_system_t **system_out, uint16_t port);
+/// ```
 #[no_mangle]
-pub unsafe extern "C" fn hittr_system_new_network(
-    system_out: *mut *mut hittr_system_t,
-    port: u16,
-) -> bool {
+pub unsafe extern "C" fn hittr_system_new_network(system_out: *mut *mut System, port: u16) -> bool {
     if let Ok(sys) = System::new_network(port) {
         // SAFETY: see docstring
-        unsafe { hittr_system_t(sys).ptr_to_arg_out(system_out) }
+        unsafe { BoxedSystem::to_out_param(sys, system_out) }
         true
     } else {
         false
@@ -160,12 +155,16 @@ pub unsafe extern "C" fn hittr_system_new_network(
 ///
 /// The system must be non-NULL and point to a valid hittr_system_t. After this call it is no
 /// longer valid and must not be used.
+///
+/// ```c
+/// void hittr_system_free(hittr_system_t *system);
+/// ```
 #[no_mangle]
-pub unsafe extern "C" fn hittr_system_free(system: *mut hittr_system_t) {
+pub unsafe extern "C" fn hittr_system_free(system: *mut System) {
     // SAFETY:
     //  - system is valid and not NULL (see docstring)
     //  - caller will not use system after this call (see docstring)
-    unsafe { hittr_system_t::take_from_ptr_arg(system) };
+    unsafe { BoxedSystem::take_nonnull(system) };
     // (System is implicitly dropped)
 }
 
@@ -176,14 +175,21 @@ pub unsafe extern "C" fn hittr_system_free(system: *mut hittr_system_t) {
 /// # Safety
 ///
 /// The system must be non-NULL and point to a valid hittr_system_t.
+///
+/// ```c
+/// void hittr_system_run(hittr_system_t *system);
+/// ```
 #[no_mangle]
-pub unsafe extern "C" fn hittr_system_run(system: *mut hittr_system_t) {
+pub unsafe extern "C" fn hittr_system_run(system: *mut System) {
     // SAFETY:
     // - system is not NULL and valid (see docstring)
     // - system is valid for the life of this function (documented as not threadsafe)
     // - system will not be accessed during the life of this function (documented as not threadsafe)
-    let system = &mut unsafe { hittr_system_t::from_ptr_arg_ref_mut(system) }.0;
-    system.run();
+    unsafe {
+        BoxedSystem::with_ref_mut_nonnull(system, |system| {
+            system.run();
+        });
+    }
 }
 
 /// Record a hit on thi Hittr system.
@@ -194,29 +200,43 @@ pub unsafe extern "C" fn hittr_system_run(system: *mut hittr_system_t) {
 /// # Safety
 ///
 /// The system must be non-NULL and point to a valid hittr_system_t.
+///
+/// ```c
+/// void hittr_system_count_hit(hittr_system_t *system);
+/// ```
 #[no_mangle]
-pub unsafe extern "C" fn hittr_system_count_hit(system: *mut hittr_system_t) {
+pub unsafe extern "C" fn hittr_system_count_hit(system: *mut System) {
     // SAFETY:
     // - system is not NULL and valid (see docstring)
     // - system is valid for the life of this function (documented as not threadsafe)
     // - system will not be accessed during the life of this function (documented as not threadsafe)
-    let system = &mut unsafe { hittr_system_t::from_ptr_arg_ref_mut(system) }.0;
-    system.count_hit();
+    unsafe {
+        BoxedSystem::with_ref_mut_nonnull(system, |system| {
+            system.count_hit();
+        });
+    }
 }
 
 /// Get the current system status.
 ///
 /// The system must be non-NULL and point to a valid hittr_system_t.
+///
+/// ```c
+/// hittr_status_t hittr_system_status(hittr_system_t *system);
+/// ```
 #[no_mangle]
-pub unsafe extern "C" fn hittr_system_status(system: *const hittr_system_t) -> hittr_status_t {
+pub unsafe extern "C" fn hittr_system_status(system: *const System) -> hittr_status_t {
     // SAFETY:
     // - system is not NULL and valid (see docstring)
     // - system is valid for the life of this function (documented as not threadsafe)
     // - system will not be modified during the life of this function (documented as not threadsafe)
-    let system = &unsafe { hittr_system_t::from_ptr_arg_ref(system) }.0;
-    // SAFETY:
-    // - hittr_status_t is not allocated, so no issues
-    unsafe { system.status.return_val() }
+    unsafe {
+        BoxedSystem::with_ref_nonnull(system, |system| {
+            // SAFETY:
+            // - hittr_status_t is not allocated, so no issues
+            unsafe { StatusValue::return_val(system.status) }
+        })
+    }
 }
 
 fn main() {
@@ -247,8 +267,8 @@ fn main() {
     unsafe { hittr_system_free(sys) };
 
     // this is awkward to call from Rust, but would be pretty natural in C
-    let mut sys: *mut hittr_system_t = std::ptr::null_mut();
-    assert!(unsafe { hittr_system_new_network(&mut sys as *mut *mut hittr_system_t, 1300) });
+    let mut sys: *mut System = std::ptr::null_mut();
+    assert!(unsafe { hittr_system_new_network(&mut sys as *mut *mut System, 1300) });
     let st = unsafe { hittr_system_status(sys) };
     assert_eq!(st.status, HITTR_STATUS_READY);
     assert_eq!(st.count, 0);
