@@ -1,6 +1,8 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 #![allow(non_camel_case_types)]
 #![allow(unused_unsafe)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::new_without_default)]
 
 use ffizz_passby::{PassByPointer, PassByValue};
 
@@ -163,8 +165,8 @@ pub unsafe extern "C" fn hittr_system_free(system: *mut hittr_system_t) {
     // SAFETY:
     //  - system is valid and not NULL (see docstring)
     //  - caller will not use system after this call (see docstring)
-    let system = unsafe { hittr_system_t::take_from_ptr_arg(system) };
-    drop(system); // (Rust would do this anyway, but let's be explicit)
+    unsafe { hittr_system_t::take_from_ptr_arg(system) };
+    // (System is implicitly dropped)
 }
 
 /// Run the Hittr system.

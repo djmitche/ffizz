@@ -1,5 +1,6 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 #![allow(non_camel_case_types)]
+#![allow(clippy::missing_safety_doc)]
 #![allow(unused_unsafe)]
 
 use ffizz_passby::PassByValue;

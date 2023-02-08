@@ -487,7 +487,7 @@ impl From<Option<&[u8]>> for FzString<'static> {
 }
 
 fn has_nul_bytes(bytes: &[u8]) -> bool {
-    bytes.iter().any(|c| *c == b'\0')
+    bytes.iter().any(|c| *c == b'\x00')
 }
 
 #[cfg(test)]
@@ -501,7 +501,7 @@ mod test {
     }
 
     fn make_cstr() -> FzString<'static> {
-        let cstr = CStr::from_bytes_with_nul(b"a string\0").unwrap();
+        let cstr = CStr::from_bytes_with_nul(b"a string\x00").unwrap();
         FzString::CStr(cstr)
     }
 
@@ -510,7 +510,7 @@ mod test {
     }
 
     fn make_string_with_nul() -> FzString<'static> {
-        "a \0 nul!".into()
+        "a \x00 nul!".into()
     }
 
     fn make_invalid_bytes() -> FzString<'static> {
@@ -518,7 +518,7 @@ mod test {
     }
 
     fn make_nul_bytes() -> FzString<'static> {
-        (&b"abc\0123"[..]).into()
+        (&b"abc\x00123"[..]).into()
     }
 
     fn make_bytes() -> FzString<'static> {
@@ -552,7 +552,7 @@ mod test {
 
     #[test]
     fn as_str_string_with_nul() {
-        assert_eq!(make_string_with_nul().as_str().unwrap(), Some("a \0 nul!"));
+        assert_eq!(make_string_with_nul().as_str().unwrap(), Some("a \x00 nul!"));
     }
 
     #[test]
@@ -562,7 +562,7 @@ mod test {
 
     #[test]
     fn as_str_nul_bytes() {
-        assert_eq!(make_nul_bytes().as_str().unwrap(), Some("abc\0123"));
+        assert_eq!(make_nul_bytes().as_str().unwrap(), Some("abc\x00123"));
     }
 
     #[test]
@@ -590,17 +590,17 @@ mod test {
 
     #[test]
     fn as_cstr_cstring() {
-        assert_eq!(make_cstring().as_cstr().unwrap(), Some(cstr("a string\0")));
+        assert_eq!(make_cstring().as_cstr().unwrap(), Some(cstr("a string\x00")));
     }
 
     #[test]
     fn as_cstr_cstr() {
-        assert_eq!(make_cstr().as_cstr().unwrap(), Some(cstr("a string\0")));
+        assert_eq!(make_cstr().as_cstr().unwrap(), Some(cstr("a string\x00")));
     }
 
     #[test]
     fn as_cstr_string() {
-        assert_eq!(make_string().as_cstr().unwrap(), Some(cstr("a string\0")));
+        assert_eq!(make_string().as_cstr().unwrap(), Some(cstr("a string\x00")));
     }
 
     #[test]
@@ -627,7 +627,7 @@ mod test {
 
     #[test]
     fn as_cstr_valid_bytes() {
-        assert_eq!(make_bytes().as_cstr().unwrap(), Some(cstr("bytes\0")));
+        assert_eq!(make_bytes().as_cstr().unwrap(), Some(cstr("bytes\x00")));
     }
 
     #[test]
@@ -637,7 +637,7 @@ mod test {
 
     #[test]
     fn as_cstr_nonnull_string() {
-        assert_eq!(make_string().as_cstr_nonnull().unwrap(), cstr("a string\0"));
+        assert_eq!(make_string().as_cstr_nonnull().unwrap(), cstr("a string\x00"));
     }
 
     #[test]
@@ -676,7 +676,7 @@ mod test {
     fn into_string_string_with_nul() {
         assert_eq!(
             make_string_with_nul().into_string().unwrap(),
-            Some(String::from("a \0 nul!"))
+            Some(String::from("a \x00 nul!"))
         )
     }
 
@@ -692,7 +692,7 @@ mod test {
     fn into_string_nul_bytes() {
         assert_eq!(
             make_nul_bytes().into_string().unwrap(),
-            Some(String::from("abc\0123"))
+            Some(String::from("abc\x00123"))
         );
     }
 
@@ -753,7 +753,7 @@ mod test {
     fn into_path_buf_string_with_nul() {
         assert_eq!(
             make_string_with_nul().into_path_buf().unwrap(),
-            Some(PathBuf::from("a \0 nul!"))
+            Some(PathBuf::from("a \x00 nul!"))
         )
     }
 
@@ -769,7 +769,7 @@ mod test {
     fn into_path_buf_nul_bytes() {
         assert_eq!(
             make_nul_bytes().into_path_buf().unwrap(),
-            Some(PathBuf::from("abc\0123"))
+            Some(PathBuf::from("abc\x00123"))
         );
     }
 
@@ -819,7 +819,7 @@ mod test {
 
     #[test]
     fn as_bytes_string_with_nul() {
-        assert_eq!(make_string_with_nul().as_bytes().unwrap(), b"a \0 nul!");
+        assert_eq!(make_string_with_nul().as_bytes().unwrap(), b"a \x00 nul!");
     }
 
     #[test]
@@ -829,7 +829,7 @@ mod test {
 
     #[test]
     fn as_bytes_null_bytes() {
-        assert_eq!(make_nul_bytes().as_bytes().unwrap(), b"abc\0123");
+        assert_eq!(make_nul_bytes().as_bytes().unwrap(), b"abc\x00123");
     }
 
     #[test]

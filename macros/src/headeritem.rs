@@ -198,7 +198,7 @@ impl HeaderItem {
                     continue;
                 }
                 if !line.is_empty() {
-                    content.push(format!("// {}", line));
+                    content.push(format!("// {line}"));
                 } else {
                     content.push("//".to_string());
                 }
@@ -219,7 +219,7 @@ impl HeaderItem {
             name,
             content,
         } = self;
-        let item_name = syn::Ident::new(&format!("FFIZZ_HDR__{}", name), Span::call_site());
+        let item_name = syn::Ident::new(&format!("FFIZZ_HDR__{name}"), Span::call_site());
 
         // insert an invocation of linkme::distributed_slice to add this header item to
         // the FFIZZ_HEADER_ITEMS slice.
