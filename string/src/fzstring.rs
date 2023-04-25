@@ -552,7 +552,10 @@ mod test {
 
     #[test]
     fn as_str_string_with_nul() {
-        assert_eq!(make_string_with_nul().as_str().unwrap(), Some("a \x00 nul!"));
+        assert_eq!(
+            make_string_with_nul().as_str().unwrap(),
+            Some("a \x00 nul!")
+        );
     }
 
     #[test]
@@ -590,7 +593,10 @@ mod test {
 
     #[test]
     fn as_cstr_cstring() {
-        assert_eq!(make_cstring().as_cstr().unwrap(), Some(cstr("a string\x00")));
+        assert_eq!(
+            make_cstring().as_cstr().unwrap(),
+            Some(cstr("a string\x00"))
+        );
     }
 
     #[test]
@@ -637,7 +643,10 @@ mod test {
 
     #[test]
     fn as_cstr_nonnull_string() {
-        assert_eq!(make_string().as_cstr_nonnull().unwrap(), cstr("a string\x00"));
+        assert_eq!(
+            make_string().as_cstr_nonnull().unwrap(),
+            cstr("a string\x00")
+        );
     }
 
     #[test]
