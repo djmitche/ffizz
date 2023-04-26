@@ -163,6 +163,16 @@ pub unsafe extern "C" fn complement_color(
 }
 ```
 
+### Thread Safety
+
+In general, `fz_string_t` is not safe for concurrent use from multiple threads (in Rust terms, it is not `Sync`) but can be passed between threads (`Send`).
+
+More precisely, functions taking `*const fz_string_t`, equivalent to a shared borrow, may be called concurrently with the same string.
+However, any call to a function taking `*mut fz_string_t`, equivalent to an exclusive borrow, must not be called concurrently with any other function taking the same string.
+Several utility functions internally mutate the string, and therefore take `*mut fz_string_t`.
+
+In many cases, it may be adequate to document only the first, general definition of thread safety in the C header, avoiding unnecessary compexity in the C API.
+
 ## Example
 
 See [the `kv` example](https://github.com/djmitche/ffizz/blob/main/string/examples/kv.rs) in this crate for a worked example of a simple library using `ffizz_string`.
