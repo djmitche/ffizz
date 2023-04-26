@@ -47,7 +47,7 @@ The fix, in this case, is to move the `let a` statement before the early return.
 Rust makes a strict distinction between a shared, read-only reference and an exclusive, mutable reference.
 C typically makes no such distinction, and avoids data races though careful comments as to which methods can be called concurrently.
 In most cases, C programmers will "guess" what methods can be called concurrently.
-A good C APi will make these guesses explicit.
+A good C API will make these guesses explicit.
 
 For example, a type might be documented as not threadsafe, where no functions may be called concurrently for a single value of the type.
 For many types, however, read-only methds can be called concurrently, as long as they are not concurrent with modifications.
