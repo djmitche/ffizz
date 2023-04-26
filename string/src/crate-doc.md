@@ -60,9 +60,23 @@ Otherwise, use [`FzString::with_ref`] or [`FzString::with_ref_mut`] to borrow a 
 
 All of these methods are unsafe.
 As standard practice, address each of the items listed in the "Safety" section of each unsafe method you call.
+These can often reference the docstring appearing in the C header, as it is generally the responsibilty of the C caller to ensure these requirements are met.
 For example:
 
 ```ignore
+ffizz_snippet!{
+#[ffizz(name="mystrtype_free")]
+/// Determine whether the given string contains a color name.
+///
+/// # Safety
+///
+/// The name argument must not be NULL.
+///
+/// ```c
+/// EXTERN_C bool is_a_color_name(const fz_string_t *);
+/// ```
+}
+pub unsafe extern "C" fn is_a_color_name(name: *const fz_string_t) -> bool { .. };
 // SAFETY:
 //  - name is not NULL (see docstring)
 //  - no other thread will mutate name (type is documented as not threadsafe)
@@ -78,10 +92,11 @@ unsafe {
 
 #### By Value
 
-Pass strings by value of type `fz_string_t`:
+Alternatively, you may require callers to pass the string by value.
+Declare your functions like this:
 
 ```ignore
-pub unsafe extern "C" fn is_a_color_name(name: *const fz_string_t) -> bool { .. };
+pub unsafe extern "C" fn is_a_color_name(name: fz_string_t) -> bool { .. };
 ```
 
 Then, use [`FzString::take`] to take ownership of the string as a Rust value.
@@ -97,7 +112,7 @@ pub unsafe extern "C" convolve_strings(a: *const fz_string_t, b: *const fz_strin
     // SAFETY: ...
     let a = unsafe { FzString::take_ptr(a) };
     if a.len() == 0 {
-        return false;
+        return false; // BUG
     }
     // SAFETY: ...
     let b = unsafe { FzString::take_ptr(b) }; // BAD!
@@ -117,10 +132,13 @@ pub unsafe extern "C" fn favorite_color() -> fz_string_t { .. }
 
 Then use [`FzString::return_val`] to return the value:
 ```ignore
-// SAFETY:
-//  - caller will free the returned string (see docstring)
-unsafe {
-    return FzString::return_val(color);
+pub unsafe extern "C" fn favorite_color() -> fz_string_t {
+    let color = FzString::from("raw umber");
+    // SAFETY:
+    //  - caller will free the returned string (see docstring)
+    unsafe {
+        return FzString::return_val(color);
+    }
 }
 ```
 
@@ -130,9 +148,18 @@ An "out parameter" is a common idiom in C and C++.
 To return a string into an out parameter, use [`FzString::to_out_param`] or [`FzString::to_out_param_nonnull`]:
 
 ```ignore
-result = FzString::from("the result");
-unsafe {
-    FzString::to_out_param(result_out, result);
+
+/// Determine the complement of the given color, returning true on success. If
+/// the color cannot be complemented, return false and leave the
+/// `complement_out` string uninitialized.
+pub unsafe extern "C" fn complement_color(
+    color: *const fz_string_t,
+    complement_out: *mut fz_string_t) -> fz_string_t {
+    result = FzString::from("opposite");
+    unsafe {
+        FzString::to_out_param(complement_out, result);
+    }
+    true
 }
 ```
 
