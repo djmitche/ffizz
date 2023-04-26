@@ -37,3 +37,7 @@ jobs:
       - run: cargo publish -p ffizz-string
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - run: cargo publish -p ffizz
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
