@@ -23,8 +23,10 @@ use std::path::PathBuf;
 ///
 /// A FzString points to allocated memory, and must be freed to avoid memory leaks.
 #[derive(PartialEq, Eq, Debug)]
+#[derive(Default)]
 pub enum FzString<'a> {
     /// An un-set FzString.
+    #[default]
     Null,
     /// An owned Rust string (not NUL-terminated, valid UTF-8).
     String(String),
@@ -75,11 +77,7 @@ impl OpaqueStruct for FzString<'_> {
     }
 }
 
-impl Default for FzString<'_> {
-    fn default() -> Self {
-        FzString::Null
-    }
-}
+
 
 impl<'a> FzString<'a> {
     /// Check if this is a Null FzString.
