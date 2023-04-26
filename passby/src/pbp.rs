@@ -1,5 +1,12 @@
 /// This trait supports values passed to Rust by pointer.
-/// These values are represented as in C, and always handled as pointers.
+/// These values are represented as opaque types in C, and always handled as pointers:
+///
+/// ```c
+/// typedef struct db_query_t db_query_t;
+/// ```
+///
+/// This differs from [`crate::OpaqueStruct`] in that C is not aware of the size of the structure
+/// and thus cannot allocate storage for it.
 ///
 /// Typically PassByPointer is used to model objects managed entirely by Rust.  These are
 /// represented in the C API by a pointer to an opaque struct, with "new" and "free" functions
