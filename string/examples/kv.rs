@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(unused_unsafe)]
 
-use ffizz_passby::PassByPointer;
+use ffizz_passby::Boxed;
 use ffizz_string::{fz_string_t as kvstore_string_t, FzString};
 use std::collections::HashMap;
 
@@ -53,10 +53,9 @@ impl Store {
 /// typedef struct kvstore_t kvstore_t;
 /// ```
 #[allow(non_camel_case_types)]
-#[repr(C)]
-pub struct kvstore_t(pub Store);
+type kvstore_t = Store;
 
-impl PassByPointer for kvstore_t {}
+type BoxedStore = Boxed<Store>;
 
 #[ffizz_header::item]
 #[ffizz(order = 20)]
@@ -73,7 +72,7 @@ impl PassByPointer for kvstore_t {}
 pub unsafe extern "C" fn kvstore_new() -> *mut kvstore_t {
     let store = Store::new();
     // SAFETY: function docs indicate value must be freed
-    unsafe { kvstore_t(store).return_ptr() }
+    unsafe { BoxedStore::return_val(store) }
 }
 
 #[ffizz_header::item]
@@ -93,7 +92,7 @@ pub unsafe extern "C" fn kvstore_free(store: *mut kvstore_t) {
     // SAFETY:
     //  - store is valid and not NULL (see docstring)
     //  - caller will not use store after this call (see docstring)
-    let store = unsafe { kvstore_t::take_from_ptr_arg(store) };
+    let store = unsafe { BoxedStore::take_nonnull(store) };
     drop(store); // (Rust would do this anyway, but let's be explicit)
 }
 
@@ -120,25 +119,28 @@ pub unsafe extern "C" fn kvstore_get(
     // - store is not NULL and valid (see docstring)
     // - store is valid for the life of this function (documented as not threadsafe)
     // - store will not be accessed during the life of this function (documented as not threadsafe)
-    let store = &unsafe { kvstore_t::from_ptr_arg_ref(store) }.0;
-    // SAFETY:
-    //  - key must be a valid kvstore_string_t (docstring)
-    //  - key will not be accessed concurrency (type docstring)
-    match unsafe {
-        FzString::with_ref_mut(key, |key| {
-            if let Ok(Some(key)) = key.as_str() {
-                store.get(key)
-            } else {
-                None // Null key or invalid UTF-8 looks the same as key-not-found
+    unsafe {
+        BoxedStore::with_ref_nonnull(store, |store| {
+            // SAFETY:
+            //  - key must be a valid kvstore_string_t (docstring)
+            //  - key will not be accessed concurrency (type docstring)
+            match unsafe {
+                FzString::with_ref_mut(key, |key| {
+                    if let Ok(Some(key)) = key.as_str() {
+                        store.get(key)
+                    } else {
+                        None // Null key or invalid UTF-8 looks the same as key-not-found
+                    }
+                })
+            } {
+                // SAFETY:
+                //  - the caller will free the returned value (see docstring)
+                Some(val) => unsafe { FzString::return_val(FzString::String(val.to_string())) },
+                // SAFETY:
+                //  - the caller will free the returned value (see docstring)
+                None => unsafe { FzString::return_val(FzString::Null) },
             }
         })
-    } {
-        // SAFETY:
-        //  - the caller will free the returned value (see docstring)
-        Some(val) => unsafe { FzString::return_val(FzString::String(val.to_string())) },
-        // SAFETY:
-        //  - the caller will free the returned value (see docstring)
-        None => unsafe { FzString::return_val(FzString::Null) },
     }
 }
 
@@ -172,20 +174,23 @@ pub unsafe extern "C" fn kvstore_set(
     // - store is not NULL and valid (see docstring)
     // - store is valid for the life of this function (documented as not threadsafe)
     // - store will not be accessed during the life of this function (documented as not threadsafe)
-    let store = &mut unsafe { kvstore_t::from_ptr_arg_ref_mut(store) }.0;
-    // SAFETY:
-    //  - key/val are valid kvstore_string_t's (see docstring)
-    //  - key/val are not accessed concurrently (type docstring)
-    //  - key/val are not uesd after function returns (see docstring)
-    let (key, val) = unsafe { (FzString::take_ptr(key), FzString::take_ptr(val)) };
+    unsafe {
+        BoxedStore::with_ref_mut_nonnull(store, |store| {
+            // SAFETY:
+            //  - key/val are valid kvstore_string_t's (see docstring)
+            //  - key/val are not accessed concurrently (type docstring)
+            //  - key/val are not uesd after function returns (see docstring)
+            let (key, val) = unsafe { (FzString::take_ptr(key), FzString::take_ptr(val)) };
 
-    if let Ok(Some(key)) = key.into_string() {
-        if let Ok(Some(val)) = val.into_string() {
-            store.set(key, val);
-            return true;
-        }
+            if let Ok(Some(key)) = key.into_string() {
+                if let Ok(Some(val)) = val.into_string() {
+                    store.set(key, val);
+                    return true;
+                }
+            }
+            false
+        })
     }
-    false
 }
 
 #[ffizz_header::item]
@@ -212,13 +217,15 @@ pub unsafe extern "C" fn kvstore_del(store: *mut kvstore_t, key: *mut kvstore_st
             // - store is not NULL and valid (see docstring)
             // - store is valid for the life of this function (documented as not threadsafe)
             // - store will not be accessed during the life of this function (documented as not threadsafe)
-            let store = &mut unsafe { kvstore_t::from_ptr_arg_ref_mut(store) }.0;
-
-            if let Ok(Some(key)) = key.as_str() {
-                store.del(key);
-                true
-            } else {
-                false
+            unsafe {
+                BoxedStore::with_ref_mut_nonnull(store, move |store| {
+                    if let Ok(Some(key)) = key.as_str() {
+                        store.del(key);
+                        true
+                    } else {
+                        false
+                    }
+                })
             }
         })
     }
@@ -247,7 +254,7 @@ ffizz_header::snippet! {
 ///
 /// ```c
 /// typedef struct kvstore_string_t {
-///     uint64_t __reserved[4];
+///     size_t __reserved[4];
 /// };
 /// ```
 }

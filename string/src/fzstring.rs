@@ -1,5 +1,5 @@
 use crate::{EmbeddedNulError, InvalidUTF8Error};
-use ffizz_passby::OpaqueStruct;
+use ffizz_passby::Unboxed;
 use std::ffi::{CStr, CString, OsString};
 use std::path::PathBuf;
 
@@ -22,8 +22,7 @@ use std::path::PathBuf;
 /// Note that the Null variant is not necessarily represented with an all-zero byte pattern.
 ///
 /// A FzString points to allocated memory, and must be freed to avoid memory leaks.
-#[derive(PartialEq, Eq, Debug)]
-#[derive(Default)]
+#[derive(PartialEq, Eq, Debug, Default)]
 pub enum FzString<'a> {
     /// An un-set FzString.
     #[default]
@@ -59,25 +58,17 @@ pub enum FzString<'a> {
 ///
 /// ```c
 /// typedef struct fz_string_t {
-///     uint64_t __reserved[4];
-/// };
+///     size_t __reserved[4];
+/// } fz_string_t;
 /// ```
 #[repr(C)]
 pub struct fz_string_t {
     // size for a determinant, pointer, length, and capacity; conservatively assuming
-    // 64 bits for each, and assuring 64-bit alignment.
-    __reserved: [u64; 4],
+    // each is at least as large as a pointer (usize) and aligned at the pointer size.
+    __reserved: [usize; 4],
 }
 
-impl OpaqueStruct for FzString<'_> {
-    type CType = fz_string_t;
-
-    fn null_value() -> Self {
-        FzString::Null
-    }
-}
-
-
+type UnboxedString<'a> = Unboxed<FzString<'a>, fz_string_t>;
 
 impl<'a> FzString<'a> {
     /// Check if this is a Null FzString.
@@ -247,7 +238,7 @@ impl<'a> FzString<'a> {
 
     /// Call the contained function with a shared reference to the FzString.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::with_ref`.
+    /// This is a wrapper around `ffizz_passby::Unboxed::with_ref`.
     ///
     /// # Safety
     ///
@@ -255,12 +246,12 @@ impl<'a> FzString<'a> {
     /// * no other thread may mutate the value pointed to by fzstr until with_ref returns.
     #[inline]
     pub unsafe fn with_ref<T, F: Fn(&FzString) -> T>(fzstr: *const fz_string_t, f: F) -> T {
-        unsafe { <Self as OpaqueStruct>::with_ref(fzstr, f) }
+        unsafe { UnboxedString::with_ref(fzstr, f) }
     }
 
     /// Call the contained function with an exclusive reference to the FzString.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::with_ref_mut`.
+    /// This is a wrapper around `ffizz_passby::Unboxed::with_ref_mut`.
     ///
     /// # Safety
     ///
@@ -268,12 +259,12 @@ impl<'a> FzString<'a> {
     /// * no other thread may access the value pointed to by `fzstr` until `with_ref_mut` returns.
     #[inline]
     pub unsafe fn with_ref_mut<T, F: Fn(&mut FzString) -> T>(fzstr: *mut fz_string_t, f: F) -> T {
-        unsafe { <Self as OpaqueStruct>::with_ref_mut(fzstr, f) }
+        unsafe { UnboxedString::with_ref_mut(fzstr, f) }
     }
 
     /// Initialize the value pointed to fzstr with, "moving" it into the pointer.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::to_out_param`.
+    /// This is a wrapper around `ffizz_passby::Unboxed::to_out_param`.
     ///
     /// If the pointer is NULL, the value is dropped.
     ///
@@ -284,12 +275,12 @@ impl<'a> FzString<'a> {
     /// * ownership of the string is transfered to `*fzstr` or dropped.
     #[inline]
     pub unsafe fn to_out_param(self, fzstr: *mut fz_string_t) {
-        unsafe { <Self as OpaqueStruct>::to_out_param(self, fzstr) }
+        unsafe { UnboxedString::to_out_param(self, fzstr) }
     }
 
     /// Initialize the value pointed to fzstr with, "moving" it into the pointer.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::to_out_param_nonnull`.
+    /// This is a wrapper around `ffizz_passby::Unboxed::to_out_param_nonnull`.
     ///
     /// If the pointer is NULL, this method will panic.  Use this when the C API requires that the
     /// pointer be non-NULL.
@@ -301,24 +292,24 @@ impl<'a> FzString<'a> {
     /// * ownership of the string is transfered to `*fzstr`.
     #[inline]
     pub unsafe fn to_out_param_nonnull(self, fzstr: *mut fz_string_t) {
-        unsafe { <Self as OpaqueStruct>::to_out_param_nonnull(self, fzstr) }
+        unsafe { UnboxedString::to_out_param_nonnull(self, fzstr) }
     }
 
     /// Return a `fz_string_t` transferring ownership out of the function.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::return_val`.
+    /// This is a wrapper around `ffizz_passby::Unboxed::return_val`.
     ///
     /// # Safety
     ///
     /// * to avoid a leak, ownership of the value must eventually be returned to Rust.
     #[inline]
     pub unsafe fn return_val(self) -> fz_string_t {
-        unsafe { <Self as OpaqueStruct>::return_val(self) }
+        unsafe { UnboxedString::return_val(self) }
     }
 
     /// Take a `fz_string_t` by value and return an owned `FzString`.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::take`.
+    /// This is a wrapper around `ffizz_passby::Unboxed::take`.
     ///
     /// This method is intended for C API functions that take a string by value and are
     /// documented as taking ownership of the value.  However, this means that C retains
@@ -332,12 +323,12 @@ impl<'a> FzString<'a> {
     /// * fzstr must be a valid `fz_string_t` value
     #[inline]
     pub unsafe fn take(fzstr: fz_string_t) -> Self {
-        unsafe { <Self as OpaqueStruct>::take(fzstr) }
+        unsafe { UnboxedString::take(fzstr) }
     }
 
     /// Take a pointer to a CType and return an owned value.
     ///
-    /// This is a wrapper around `ffizz_passby::OpaqueStruct::take_ptr`.
+    /// This is a wrapper around `ffizz_passby::Unboxed::take_ptr`.
     ///
     /// This is intended for C API functions that take a value by reference (pointer), but still
     /// "take ownership" of the value.  It leaves behind an invalid value, where any non-padding
@@ -359,7 +350,7 @@ impl<'a> FzString<'a> {
     /// * the memory pointed to by fzstr is uninitialized when this function returns.
     #[inline]
     pub unsafe fn take_ptr(fzstr: *mut fz_string_t) -> Self {
-        unsafe { <Self as OpaqueStruct>::take_ptr(fzstr) }
+        unsafe { UnboxedString::take_ptr(fzstr) }
     }
 
     /// Convert the FzString, in place, from a Bytes to String variant, returning None if

@@ -3,7 +3,7 @@ It provides a way to pass strings into Rust functions and to return strings to C
 
 ## Usage
 
-The types in this crate are specializations of a `ffizz_passby::OpaqueStruct`.
+The types in this crate use `ffizz_passby::UnboxedStruct` and have a similar API.
 See the documentation `ffizz-passby` crate for more general guidance on creating effective C APIs.
 
 ### String Type
