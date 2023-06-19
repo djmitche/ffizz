@@ -2,7 +2,7 @@
 name = "ffizz"
 description = "A library of utilities for exporting Rust libs for use in other languages"
 repository = "https://github.com/djmitche/ffizz"
-readme = "../README.md"
+readme = "README.md"
 documentation = "https://docs.rs/ffizz"
 license = "MIT"
 version = "0.5.0"
