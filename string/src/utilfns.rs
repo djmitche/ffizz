@@ -46,7 +46,7 @@ pub unsafe fn fz_string_borrow(cstr: *const c_char) -> fz_string_t {
 /// The resulting `fz_string_t` must be freed.
 ///
 /// ```c
-/// `fz_string_t` fz_string_null();
+/// fz_string_t fz_string_null();
 /// ```
 #[inline(always)]
 pub unsafe fn fz_string_null() -> fz_string_t {
