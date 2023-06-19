@@ -17,3 +17,15 @@ libc = { workspace = true }
 
 [package.metadata.docs.rs]
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+
+[[example]]
+name = "bytebuf"
+doc-scrape-examples = true
+
+[[example]]
+name = "status"
+doc-scrape-examples = true
+
+[[example]]
+name = "uuid"
+doc-scrape-examples = true
