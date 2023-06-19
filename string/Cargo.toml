@@ -5,15 +5,15 @@ repository = "https://github.com/djmitche/ffizz"
 readme = "src/crate-doc.md"
 documentation = "https://docs.rs/ffizz-string"
 license = "MIT"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
 
 [dependencies]
 # all non-ffizz dependencies should be specified in the workspace
 libc = { workspace = true }
 
-ffizz-passby = { version = "0.4.1", path = "../passby" }
-ffizz-header = { version = "0.4.1", path = "../header" }
+ffizz-passby = { version = "0.5.0", path = "../passby" }
+ffizz-header = { version = "0.5.0", path = "../header" }
 
 [dev-dependencies]
 uuid = { workspace = true }
